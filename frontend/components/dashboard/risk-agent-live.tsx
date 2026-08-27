@@ -46,7 +46,7 @@ const riskLevelColors: Record<string, string> = {
   HIGH: "text-red-500 border-red-500/30 bg-red-500/10",
 }
 
-export function RiskAgentLiveOutput({ agentSlug, onLog, onAnalysisComplete, pipelineActive }: RiskAgentLiveOutputProps) {
+export function AnalysisOutput({ agentSlug, onLog, onAnalysisComplete, pipelineActive }: RiskAgentLiveOutputProps) {
   const [activeTab, setActiveTab] = useState("summary")
   const [decision, setDecision] = useState<DecisionOutput | null>(null)
   const [sampleEvents, setSampleEvents] = useState<AnomalyEvent[]>([])

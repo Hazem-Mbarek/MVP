@@ -1,0 +1,111 @@
+incoterms_comparison:
+
+  EXW:
+    category: E
+    mode_scope: any_mode
+    seller_arranges_main_carriage: false
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: origin_named_place
+
+  FCA:
+    category: F
+    mode_scope: any_mode
+    seller_arranges_main_carriage: false
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: named_delivery_point
+
+  CPT:
+    category: C
+    mode_scope: any_mode
+    seller_arranges_main_carriage: true
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: carrier_delivery_point
+
+  CIP:
+    category: C
+    mode_scope: any_mode
+    seller_arranges_main_carriage: true
+    seller_provides_insurance: true
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: carrier_delivery_point
+
+  DAP:
+    category: D
+    mode_scope: any_mode
+    seller_arranges_main_carriage: true
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: destination_ready_for_unloading
+
+  DPU:
+    category: D
+    mode_scope: any_mode
+    seller_arranges_main_carriage: true
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: true
+    risk_location: destination_after_unloading
+
+  DDP:
+    category: D
+    mode_scope: any_mode
+    seller_arranges_main_carriage: true
+    seller_provides_insurance: false
+    seller_handles_import_clearance: true
+    seller_pays_import_duties: true
+    seller_unloads_at_destination: false
+    risk_location: destination_ready_for_unloading
+
+  FAS:
+    category: F
+    mode_scope: sea_and_inland_waterway_only
+    seller_arranges_main_carriage: false
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: alongside_vessel_at_port_of_loading
+
+  FOB:
+    category: F
+    mode_scope: sea_and_inland_waterway_only
+    seller_arranges_main_carriage: false
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: on_board_vessel_at_port_of_loading
+
+  CFR:
+    category: C
+    mode_scope: sea_and_inland_waterway_only
+    seller_arranges_main_carriage: true
+    seller_provides_insurance: false
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: on_board_vessel_at_port_of_loading
+
+  CIF:
+    category: C
+    mode_scope: sea_and_inland_waterway_only
+    seller_arranges_main_carriage: true
+    seller_provides_insurance: true
+    seller_handles_import_clearance: false
+    seller_pays_import_duties: false
+    seller_unloads_at_destination: false
+    risk_location: on_board_vessel_at_port_of_loading

@@ -18,7 +18,7 @@ const messages = [
   { from: "them" as const, text: "It showed up around 09:00." },
 ]
 
-export function DataAgentInbox() {
+export function ShipmentsInbox() {
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
       <CardHeader className="shrink-0 border-b border-border p-3">
@@ -60,7 +60,7 @@ export function DataAgentInbox() {
   )
 }
 
-export function DataAgentChat() {
+export function ShipmentsChat() {
   const [thread, setThread] = useState(messages)
 
   return (
@@ -102,7 +102,7 @@ export function DataAgentChat() {
   )
 }
 
-export function DataAgentContact() {
+export function ShipmentsContact() {
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
       <CardHeader className="shrink-0 border-b border-border p-3">

@@ -23,7 +23,7 @@ import {
   RefreshCw,
   Network,
 } from "lucide-react"
-import { NetworkAgentTest } from "./network-agent-test"
+import { SystemTest } from "./network-agent-test"
 
 interface BehaviorAgentLiveProps {
   agentSlug: string
@@ -58,7 +58,7 @@ function sessionLabel(s: SessionInput, i: number): string {
   return `#${i + 1} ${s.user_id} · ${s.session_start?.slice(0, 10) ?? ""} ${tag}`
 }
 
-export function BehaviorAgentLive({ agentSlug, onLog, onAnalysisComplete, pipelineActive }: BehaviorAgentLiveProps) {
+export function ProcessAnalysis({ agentSlug, onLog, onAnalysisComplete, pipelineActive }: BehaviorAgentLiveProps) {
   const [activeTab, setActiveTab]       = useState("summary")
   const [sessions, setSessions]         = useState<SessionInput[]>([])
   const [selectedIdx, setSelectedIdx]   = useState(0)
@@ -425,7 +425,7 @@ export function BehaviorAgentLive({ agentSlug, onLog, onAnalysisComplete, pipeli
       )}
 
       {/* Network Agent Test */}
-      <NetworkAgentTest />
+      <SystemTest />
     </div>
   )
 }

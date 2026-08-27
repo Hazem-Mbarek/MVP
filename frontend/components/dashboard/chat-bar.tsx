@@ -8,9 +8,11 @@ import { Send } from "lucide-react"
 export function ChatBar({
   placeholder = "Type a message...",
   onSend,
+  disabled = false,
 }: {
   placeholder?: string
   onSend?: (text: string) => void
+  disabled?: boolean
 }) {
   const [value, setValue] = useState("")
 
@@ -19,6 +21,7 @@ export function ChatBar({
       className="shrink-0 border-t border-border p-3"
       onSubmit={(e) => {
         e.preventDefault()
+        if (disabled) return
         const text = value.trim()
         if (!text) return
         onSend?.(text)
@@ -31,8 +34,9 @@ export function ChatBar({
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
           className="h-8 rounded font-mono text-xs"
+          disabled={disabled}
         />
-        <Button type="submit" size="sm" className="h-8 rounded">
+        <Button type="submit" size="sm" className="h-8 rounded" disabled={disabled}>
           <Send className="h-3.5 w-3.5" />
           Send
         </Button>

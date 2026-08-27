@@ -1,0 +1,25 @@
+1. Company Identity
+2. Corporate Structure
+3. Geographic Coverage
+4. Service Portfolio
+5. Service Availability by Country
+6. Fleet
+7. Warehouse
+8. Customs & Compliance
+9. Pricing Rules
+10. Booking Rules
+11. Pickup Rules
+12. Delivery Rules
+13. Claims & Insurance
+14. Customer Types
+15. Departments
+16. Roles & Responsibilities
+17. Approval Authority
+18. Escalation Rules
+19. Documents
+20. Operational Workflows
+21. Contact Channels
+22. Business Hours
+23. Service Restrictions
+24. Special Cargo Rules
+25. Internal Policies

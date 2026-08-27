@@ -1,0 +1,173 @@
+# LogHub - Global Project Requirements
+# Project: Logistics Management Platform (NordRoute Logistics GmbH)
+# Updated: 2026-08-28
+
+# ============================================================
+# FRONTEND: Next.js & React
+# ============================================================
+# See: frontend/package.json
+# Key dependencies:
+#   - next@16.2.4
+#   - react@19.0.0-rc-66855b96c0-20240604
+#   - typescript@5.9.3
+#   - tailwindcss@3.4.1
+#   - shadcn/ui components
+#   - recharts for data visualization
+
+# Installation:
+#   cd frontend
+#   npm install
+
+# ============================================================
+# BACKEND: Express.js & TypeScript
+# ============================================================
+# See: backend/package.json
+# Key dependencies:
+#   - express@4.18.2
+#   - typescript@5.9.3
+#   - ts-node-dev@2.0.0 (for development)
+#   - cors@2.8.5
+#   - dotenv@16.3.1
+#   - axios (for HTTP requests to OpenRouter)
+
+# Installation:
+#   cd backend
+#   npm install
+
+# ============================================================
+# DATABASE
+# ============================================================
+Database: SQLite 3 (file-based)
+Location: data/knowledge/company/database/loghub.db
+
+Schema Files:
+  - data/knowledge/company/database/create_sqlite.sql (operational tables)
+  - data/knowledge/company/database/create_com.sql (commercial tables)
+
+Seed Data:
+  - data/knowledge/company/database/seed2.sql (all data: 44 employees, 18 clients, 88 jobs, 9 issues)
+
+Python Database Access (optional):
+  - sqlite3 (built-in with Python)
+  - better-sqlite3 (npm package for Node.js)
+
+# ============================================================
+# EXTERNAL SERVICES
+# ============================================================
+OpenRouter API:
+  - Provider: OpenRouter.ai
+  - Purpose: AI model inference (Claude for chat, analysis)
+  - Authentication: API Key (stored in environment variables)
+  - Endpoints: https://openrouter.ai/api/v1/*
+  - Models: Claude series (claude-opus, claude-sonnet, etc.)
+
+Configuration:
+  - Backend: OPENROUTER_API_KEY (backend/.env)
+  - Frontend: NEXT_PUBLIC_BACKEND_URL (frontend/.env.local)
+
+# ============================================================
+# DEVELOPMENT ENVIRONMENT
+# ============================================================
+Operating System: Windows
+Node.js: v18+ (recommended)
+Python: 3.8+ (for database utilities)
+npm: 10.7.0+
+
+Frontend Server: http://localhost:3001
+Backend Server: http://localhost:5000
+Database: file-based (no server required)
+
+# ============================================================
+# PROJECT STRUCTURE
+# ============================================================
+MVP/
+├── frontend/              # Next.js app
+│   ├── app/              # App router pages
+│   ├── components/       # React components
+│   └── lib/              # Utilities (API client, etc.)
+├── backend/              # Express.js API
+│   └── src/              # TypeScript source
+│       ├── routes/       # API routes
+│       ├── services/     # Business logic
+│       └── config.ts     # Configuration
+├── data/                 # Knowledge base & database
+│   ├── knowledge/        # Company knowledge & CMR/Incoterms docs
+│   │   └── company/
+│   │       ├── database/ # SQLite DB + schemas
+│   │       └── company_profile.md
+│   ├── cmr.pdf          # CMR Convention documentation
+│   └── incoterms.txt    # Incoterms reference
+└── requirements.txt     # This file
+
+# ============================================================
+# RUNNING THE APPLICATION
+# ============================================================
+Step 1: Install dependencies
+  cd frontend && npm install
+  cd ../backend && npm install
+
+Step 2: Start the backend server
+  cd backend
+  npm run dev
+  # Server runs on http://localhost:5000
+
+Step 3: Start the frontend development server (in new terminal)
+  cd frontend
+  npm run dev
+  # App runs on http://localhost:3001
+
+Step 4: Access the application
+  Open browser to http://localhost:3001
+
+# ============================================================
+# KEY FEATURES & PAGES
+# ============================================================
+Dashboard Pages:
+  - Overview: Main landing page
+  - Chatbot (/agents/attacker-agent): AI chat interface with OpenRouter
+  - Processes (/processes): Automated process execution & monitoring
+  - Knowledge Base (/knowledge-base): Company docs (CMR, Incoterms, procedures)
+  - Settings (/settings): System configuration & admin controls
+
+API Endpoints:
+  - POST /api/chat: Send message to AI, get response
+
+Database Features:
+  - 44 employees across 8 departments
+  - 2 operational warehouses (Dortmund, Leipzig)
+  - 8 vehicles (FTL, LTL, moving trucks)
+  - 18 clients across 5 countries
+  - 88 jobs/shipments (Jan-Oct 2026)
+  - 9 issues tracked (delays, damage, documentation)
+  - CMR compliance documentation for cross-border shipments
+
+# ============================================================
+# ENVIRONMENT VARIABLES
+# ============================================================
+Frontend (.env.local):
+  NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+
+Backend (.env):
+  PORT=5000
+  NODE_ENV=development
+  OPENROUTER_API_KEY=<your-api-key>
+  OPENROUTER_API_URL=https://openrouter.ai/api/v1
+
+# ============================================================
+# DOCUMENTATION REFERENCES
+# ============================================================
+- Database README: data/knowledge/company/database/README.md
+- Company Profile: data/knowledge/company/company_profile.md
+- CMR Convention: data/cmr.pdf (included in data folder)
+- Incoterms: data/knowledge/incoterms/ (markdown files for each term)
+
+# ============================================================
+# VERSION HISTORY
+# ============================================================
+v1.0 - 2026-08-28
+  - Initial MVP frontend (pages, navigation, styling)
+  - Express.js backend with OpenRouter integration
+  - SQLite database with operational & commercial schemas
+  - 88 realistic logistics jobs with CMR/Incoterms compliance
+  - Issue tracking system (9 sample issues)
+  - Complete company organizational structure (44 employees, 8 departments)

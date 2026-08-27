@@ -53,7 +53,7 @@ interface NetworkAnalysisResult {
   }
 }
 
-export function NetworkAgentTest() {
+export function SystemTest() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<NetworkAnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)

@@ -15,7 +15,7 @@ const starterMessages = [
   { from: "them" as const, text: "Prompt the model with a question." },
 ]
 
-export function AttackerAgentChats() {
+export function ChatList() {
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
       <CardHeader className="shrink-0 border-b border-border p-3">
@@ -57,8 +57,30 @@ export function AttackerAgentChats() {
   )
 }
 
-export function AttackerAgentChat() {
+export function ChatInterface() {
   const [thread, setThread] = useState(starterMessages)
+  const [loading, setLoading] = useState(false)
+
+  const handleSendMessage = async (text: string) => {
+    // Add user message immediately
+    setThread((prev) => [...prev, { from: "me", text }])
+    setLoading(true)
+
+    try {
+      const { sendMessage } = await import("@/lib/openrouter")
+      const response = await sendMessage(text)
+      setThread((prev) => [...prev, { from: "them", text: response }])
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to get response from AI"
+      setThread((prev) => [
+        ...prev,
+        { from: "them", text: `Error: ${errorMessage}` },
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
@@ -90,10 +112,18 @@ export function AttackerAgentChat() {
             </div>
           </div>
         ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">Thinking...</p>
+            </div>
+          </div>
+        )}
       </CardContent>
       <ChatBar
         placeholder="Prompt the model..."
-        onSend={(text) => setThread((prev) => [...prev, { from: "me", text }])}
+        onSend={handleSendMessage}
+        disabled={loading}
       />
     </Card>
   )

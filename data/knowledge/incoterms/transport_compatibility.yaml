@@ -1,0 +1,85 @@
+transport_compatibility:
+
+  road:
+    compatible:
+      - EXW
+      - FCA
+      - CPT
+      - CIP
+      - DAP
+      - DPU
+      - DDP
+    not_intended_for:
+      - FAS
+      - FOB
+      - CFR
+      - CIF
+
+  rail:
+    compatible:
+      - EXW
+      - FCA
+      - CPT
+      - CIP
+      - DAP
+      - DPU
+      - DDP
+    not_intended_for:
+      - FAS
+      - FOB
+      - CFR
+      - CIF
+
+  air:
+    compatible:
+      - EXW
+      - FCA
+      - CPT
+      - CIP
+      - DAP
+      - DPU
+      - DDP
+    not_intended_for:
+      - FAS
+      - FOB
+      - CFR
+      - CIF
+
+  sea:
+    compatible:
+      - EXW
+      - FCA
+      - CPT
+      - CIP
+      - DAP
+      - DPU
+      - DDP
+      - FAS
+      - FOB
+      - CFR
+      - CIF
+
+  inland_waterway:
+    compatible:
+      - EXW
+      - FCA
+      - CPT
+      - CIP
+      - DAP
+      - DPU
+      - DDP
+      - FAS
+      - FOB
+      - CFR
+      - CIF
+
+  multimodal:
+    compatible:
+      - EXW
+      - FCA
+      - CPT
+      - CIP
+      - DAP
+      - DPU
+      - DDP
+    note: "Sea-specific rules should not be treated as general multimodal rules."

@@ -8,9 +8,9 @@ import { agents } from "@/lib/mock-data"
 import { AgentInfo } from "@/components/dashboard/agent-info"
 import { AgentOutput } from "@/components/dashboard/agent-output"
 import { TerminalLogs } from "@/components/dashboard/terminal-logs"
-import { RiskAgentLiveOutput } from "@/components/dashboard/risk-agent-live"
-import { DataAgentInbox, DataAgentChat, DataAgentContact } from "@/components/dashboard/data-agent-live"
-import { AttackerAgentChats, AttackerAgentChat } from "@/components/dashboard/attacker-agent-live"
+import { AnalysisOutput } from "@/components/dashboard/risk-agent-live"
+import { ShipmentsInbox, ShipmentsChat, ShipmentsContact } from "@/components/dashboard/data-agent-live"
+import { ChatList, ChatInterface } from "@/components/dashboard/attacker-agent-live"
 import { ProcessList } from "@/components/dashboard/process-list"
 import ResponseAgentTest from "@/components/dashboard/response-agent-test"
 import { Button } from "@/components/ui/button"
@@ -141,9 +141,9 @@ export default function AgentPage({ params }: AgentPageProps) {
           className="overflow-y-auto lg:col-span-3"
         >
           {slug === "data-agent" ? (
-            <DataAgentInbox />
+            <ShipmentsInbox />
           ) : slug === "attacker-agent" ? (
-            <AttackerAgentChats />
+            <ChatList />
           ) : slug === "behavior-agent" ? (
             <ProcessList />
           ) : (
@@ -167,11 +167,11 @@ export default function AgentPage({ params }: AgentPageProps) {
           className={slug === "attacker-agent" ? "overflow-y-auto lg:col-span-9" : "overflow-y-auto lg:col-span-5"}
         >
           {slug === "risk-behavior-agent" ? (
-            <RiskAgentLiveOutput agentSlug={slug} onLog={handleLog} onAnalysisComplete={handleAnalysisComplete} pipelineActive={isInPipeline} />
+            <AnalysisOutput agentSlug={slug} onLog={handleLog} onAnalysisComplete={handleAnalysisComplete} pipelineActive={isInPipeline} />
           ) : slug === "data-agent" ? (
-            <DataAgentChat />
+            <ShipmentsChat />
           ) : slug === "attacker-agent" ? (
-            <AttackerAgentChat />
+            <ChatInterface />
           ) : slug === "response-agent" ? (
             <ResponseAgentTest />
           ) : (
@@ -188,7 +188,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           className="h-full min-h-[400px] lg:col-span-4"
         >
           {slug === "data-agent" ? (
-            <DataAgentContact />
+            <ShipmentsContact />
           ) : (
             <TerminalLogs agentSlug={slug} liveLogs={isLiveAgent && combinedLogs.length > 0 ? combinedLogs : undefined} />
           )}
