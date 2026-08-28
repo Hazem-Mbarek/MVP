@@ -7,7 +7,7 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    router.push("/agents/external")
+    router.push("/overview")
   }, [router])
 
   return null

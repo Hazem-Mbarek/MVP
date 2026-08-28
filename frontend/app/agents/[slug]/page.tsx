@@ -13,6 +13,7 @@ import { ShipmentsInbox, ShipmentsChat, ShipmentsContact } from "@/components/da
 import { ChatList, ChatInterface } from "@/components/dashboard/attacker-agent-live"
 import { ProcessList } from "@/components/dashboard/process-list"
 import ResponseAgentTest from "@/components/dashboard/response-agent-test"
+import { ExternalAgentTester } from "@/components/dashboard/external-agent-tester"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { usePipeline } from "@/lib/pipeline-store"
@@ -21,10 +22,20 @@ interface AgentPageProps {
   params: Promise<{ slug: string }>
 }
 
+interface Message {
+  id: string
+  text: string
+  sender: "client" | "server"
+  timestamp: Date
+}
+
 export default function AgentPage({ params }: AgentPageProps) {
   const { slug } = use(params)
   const agentIndex = agents.findIndex(a => a.slug === slug)
   const agent = agents[agentIndex]
+
+  // ── Shared external agent state ────────────────────────────────
+  const [externalMessages, setExternalMessages] = useState<Message[]>([])
 
   // ── Global pipeline store ──────────────────────────────────────
   const pipeline = usePipeline()
@@ -169,7 +180,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           {slug === "risk-behavior-agent" ? (
             <AnalysisOutput agentSlug={slug} onLog={handleLog} onAnalysisComplete={handleAnalysisComplete} pipelineActive={isInPipeline} />
           ) : slug === "external" ? (
-            <ShipmentsChat />
+            <ShipmentsChat externalMessages={externalMessages} onAddMessage={(msg) => setExternalMessages(prev => [...prev, msg])} />
           ) : slug === "internal" ? (
             <ChatInterface />
           ) : slug === "response-agent" ? (
@@ -188,7 +199,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           className="h-full min-h-[400px] lg:col-span-4"
         >
           {slug === "external" ? (
-            <ShipmentsContact />
+            <ExternalAgentTester externalMessages={externalMessages} onAddMessage={(msg) => setExternalMessages(prev => [...prev, msg])} />
           ) : (
             <TerminalLogs agentSlug={slug} liveLogs={isLiveAgent && combinedLogs.length > 0 ? combinedLogs : undefined} />
           )}

@@ -6,12 +6,6 @@ import { Separator } from "@/components/ui/separator"
 import { Inbox, Mail } from "lucide-react"
 import { ChatBar } from "@/components/dashboard/chat-bar"
 
-const inboxItems = [
-  { name: "Alex Chen", preview: "Can you check the last login spike?", time: "09:14", active: true },
-  { name: "Jordan Hale", preview: "VPN access looks unusual today.", time: "08:41", active: false },
-  { name: "Sam Rivera", preview: "Need a recap of yesterday's events.", time: "Yesterday", active: false },
-]
-
 const messages = [
   { from: "them" as const, text: "Can you check the last login spike?" },
   { from: "me" as const, text: "Looking at the session now." },
@@ -19,13 +13,21 @@ const messages = [
 ]
 
 export function ShipmentsInbox() {
+  const [selectedInbox, setSelectedInbox] = useState<string | null>("Alex Chen")
+  
+  const inboxItems = [
+    { name: "Client Request", preview: "Can you check Incoterms for sea shipping?", time: "09:14", active: true },
+    { name: "Policy Question", preview: "What's your pricing for express delivery?", time: "08:41", active: false },
+    { name: "CMR Inquiry", preview: "Need clarification on carriage terms.", time: "Yesterday", active: false },
+  ]
+
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
       <CardHeader className="shrink-0 border-b border-border p-3">
         <div className="flex items-center gap-2">
           <Inbox className="h-4 w-4 text-blue-500" />
           <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Inbox
+            Client Requests
           </span>
         </div>
       </CardHeader>
@@ -33,14 +35,15 @@ export function ShipmentsInbox() {
         {inboxItems.map((item) => (
           <div
             key={item.name}
+            onClick={() => setSelectedInbox(item.name)}
             className={
-              item.active
-                ? "flex w-full items-start gap-3 border-b border-border border-l-2 border-l-blue-500 bg-blue-500/10 px-3 py-3"
-                : "flex w-full items-start gap-3 border-b border-border px-3 py-3"
+              selectedInbox === item.name
+                ? "flex w-full items-start gap-3 border-b border-border border-l-2 border-l-blue-500 bg-blue-500/10 px-3 py-3 cursor-pointer"
+                : "flex w-full items-start gap-3 border-b border-border px-3 py-3 hover:bg-muted/30 cursor-pointer transition-colors"
             }
           >
             <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded border border-blue-500/30 bg-blue-500/10 font-mono text-[10px] text-blue-600">
-              {item.name.split(" ").map((n) => n[0]).join("")}
+              {item.name.split(" ").map((n) => n[0]).join("").substring(0, 2)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
@@ -60,8 +63,14 @@ export function ShipmentsInbox() {
   )
 }
 
-export function ShipmentsChat() {
+export function ShipmentsChat({ externalMessages, onAddMessage }: { externalMessages?: any[], onAddMessage?: (msg: any) => void }) {
   const [thread, setThread] = useState(messages)
+
+  // Use external messages if provided, otherwise use local state
+  const displayMessages = externalMessages !== undefined ? externalMessages : thread
+  const addMessage = onAddMessage
+    ? (msg: any) => onAddMessage(msg)
+    : (msg: any) => setThread((prev) => [...prev, msg])
 
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
@@ -77,26 +86,39 @@ export function ShipmentsChat() {
         </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-3 overflow-y-auto p-3">
-        {thread.map((message, index) => (
-          <div
-            key={index}
-            className={message.from === "me" ? "flex justify-end" : "flex justify-start"}
-          >
+        {displayMessages.map((message, index) => {
+          // Handle both old format (from: "me"/"them") and new format (sender: "client"/"server")
+          const isFromMe = message.from === "me" || message.sender === "client"
+          return (
             <div
-              className={
-                message.from === "me"
-                  ? "max-w-[80%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
-                  : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
-              }
+              key={message.id || index}
+              className={isFromMe ? "flex justify-end" : "flex justify-start"}
             >
-              <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
+              <div
+                className={
+                  isFromMe
+                    ? "max-w-[80%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
+                    : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
+                }
+              >
+                <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </CardContent>
       <ChatBar
         placeholder="Write a message..."
-        onSend={(text) => setThread((prev) => [...prev, { from: "me", text }])}
+        onSend={(text) => {
+          const newMsg = {
+            id: Date.now().toString(),
+            text,
+            from: "me" as const,
+            sender: "client" as const,
+            timestamp: new Date(),
+          }
+          addMessage(newMsg)
+        }}
       />
     </Card>
   )

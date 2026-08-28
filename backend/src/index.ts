@@ -2,6 +2,7 @@ import express from "express"
 import cors from "cors"
 import { config } from "./config"
 import chatRoutes from "./routes/chat.routes"
+import externalChatRoutes from "./routes/external-chat.routes"
 import knowledgeRoutes from "./routes/knowledge.routes"
 import { loadYAMLData } from "./knowledge/yaml-tools"
 import { loadIndex } from "./knowledge/search"
@@ -66,6 +67,7 @@ app.get("/health", (req, res) => {
 // Routes
 console.log("[SERVER] Registering routes...")
 app.use("/api/chat", chatRoutes)
+app.use("/api/external-chat", externalChatRoutes)
 app.use("/api/knowledge", knowledgeRoutes)
 
 // 404 handler
