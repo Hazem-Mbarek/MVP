@@ -4,6 +4,7 @@
 
 import { searchKnowledge } from "./search"
 import { checkTransportCompatibility, compareIncoterms } from "./yaml-tools"
+import { queryDatabase } from "./database-tools"
 
 // Tool schemas in OpenAI format
 export const toolSchemas = [
@@ -75,6 +76,43 @@ export const toolSchemas = [
           },
         },
         required: ["codes"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_database",
+      description:
+        "Query the company operational database to retrieve data about clients, jobs, employees, vehicles, warehouses, issues, etc. The agent should generate appropriate SQL based on user intent.",
+      parameters: {
+        type: "object",
+        properties: {
+          description: {
+            type: "string",
+            description:
+              "Natural language description of what data is needed (e.g., 'Find all active jobs for client ABC')",
+          },
+          tables: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: ["employees", "departments", "clients", "jobs", "vehicles", "warehouses", "issues", "services", "countries"],
+            },
+            description: "Which tables to query from. Required.",
+          },
+          filters: {
+            type: "object",
+            description:
+              "Optional filter conditions as key-value pairs (e.g., {status: 'active', client_id: 5})",
+          },
+          limit: {
+            type: "integer",
+            description: "Maximum number of rows to return (default: 100, max: 100)",
+            default: 100,
+          },
+        },
+        required: ["description", "tables"],
       },
     },
   },
@@ -173,5 +211,32 @@ export function handleCompareIncoterms(params: {
       status: "error",
       message: `Comparison failed: ${error instanceof Error ? error.message : "Unknown error"}`,
     }
+  }
+}
+
+export async function handleQueryDatabase(params: {
+  description: string
+  tables?: string[]
+  filters?: Record<string, string | number>
+  limit?: number
+}): Promise<any> {
+  const { description, tables = [], filters, limit } = params
+  
+  console.log(`[TOOLS] query_database: "${description}" from tables: ${tables.join(", ")}`)
+  
+  const result = await queryDatabase({
+    description,
+    tables,
+    filters,
+    limit: Math.min(limit || 100, 100),
+  })
+  
+  return {
+    status: result.status,
+    message: result.message || undefined,
+    table: result.table,
+    row_count: result.row_count,
+    data: result.data,
+    source: "loghub.db",
   }
 }

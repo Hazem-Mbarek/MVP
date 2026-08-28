@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Bot, MessageSquare } from "lucide-react"
 import { ChatBar } from "@/components/dashboard/chat-bar"
+import { MarkdownRenderer } from "@/components/markdown-renderer"
 
 const chats = [
   { name: "New Chat", preview: "Ask the model a question.", time: "Now", active: true },
@@ -108,7 +109,11 @@ export function ChatInterface() {
                   : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
               }
             >
-              <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
+              {message.from === "me" ? (
+                <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
+              ) : (
+                <MarkdownRenderer content={message.text} />
+              )}
             </div>
           </div>
         ))}

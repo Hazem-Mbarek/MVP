@@ -5,6 +5,7 @@ import chatRoutes from "./routes/chat.routes"
 import { loadYAMLData } from "./knowledge/yaml-tools"
 import { loadIndex } from "./knowledge/search"
 import { initEmbeddings } from "./knowledge/embeddings"
+import { initDatabase } from "./knowledge/database-tools"
 
 const app = express()
 
@@ -20,6 +21,10 @@ async function initializeKnowledge() {
     
     // Load vector search index
     await loadIndex()
+    
+    // NOTE: Database initialization deferred - would hang on startup
+    // Initialize when first database query tool is called instead
+    console.log("[KNOWLEDGE] Database initialization deferred to first use")
     
     console.log("[KNOWLEDGE] ✓ Knowledge system initialized")
   } catch (error) {
