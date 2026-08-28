@@ -57,8 +57,8 @@ export interface PipelineActions {
 }
 
 const defaultStatuses: Record<string, AgentStatus> = {
-  'data-agent': 'idle',
-  'attacker-agent': 'idle',
+  'external': 'idle',
+  'internal': 'idle',
   'behavior-agent': 'idle',
   'risk-behavior-agent': 'idle',
   'response-agent': 'idle',

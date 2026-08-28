@@ -74,7 +74,7 @@ export default function AgentPage({ params }: AgentPageProps) {
     : liveLogs
 
   // Determine if this agent has live functionality
-  const isLiveAgent = ["risk-behavior-agent", "behavior-agent", "data-agent", "attacker-agent", "response-agent"].includes(slug)
+  const isLiveAgent = ["risk-behavior-agent", "behavior-agent", "external", "internal", "response-agent"].includes(slug)
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -97,7 +97,7 @@ export default function AgentPage({ params }: AgentPageProps) {
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{agent.role}</p>
           </div>
           {/* Pipeline running badge */}
-          {slug !== "data-agent" && slug !== "attacker-agent" && slug !== "behavior-agent" && isInPipeline && (
+          {slug !== "external" && slug !== "internal" && slug !== "behavior-agent" && isInPipeline && (
             <span className="ml-2 flex items-center gap-1.5 rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 font-mono text-[10px] font-medium uppercase text-blue-500">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
@@ -106,7 +106,7 @@ export default function AgentPage({ params }: AgentPageProps) {
               Running via Pipeline
             </span>
           )}
-          {slug !== "data-agent" && slug !== "attacker-agent" && slug !== "behavior-agent" && !isInPipeline && pipelineLogs.length > 0 && pipelineStatus === 'completed' && (
+          {slug !== "external" && slug !== "internal" && slug !== "behavior-agent" && !isInPipeline && pipelineLogs.length > 0 && pipelineStatus === 'completed' && (
             <span className="ml-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[10px] font-medium uppercase text-emerald-500">
               ✓ Pipeline Complete
             </span>
@@ -140,9 +140,9 @@ export default function AgentPage({ params }: AgentPageProps) {
           animate={{ opacity: 1, x: 0 }}
           className="overflow-y-auto lg:col-span-3"
         >
-          {slug === "data-agent" ? (
+          {slug === "external" ? (
             <ShipmentsInbox />
-          ) : slug === "attacker-agent" ? (
+          ) : slug === "internal" ? (
             <ChatList />
           ) : slug === "behavior-agent" ? (
             <ProcessList />
@@ -164,13 +164,13 @@ export default function AgentPage({ params }: AgentPageProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className={slug === "attacker-agent" ? "overflow-y-auto lg:col-span-9" : "overflow-y-auto lg:col-span-5"}
+          className={slug === "internal" ? "overflow-y-auto lg:col-span-9" : "overflow-y-auto lg:col-span-5"}
         >
           {slug === "risk-behavior-agent" ? (
             <AnalysisOutput agentSlug={slug} onLog={handleLog} onAnalysisComplete={handleAnalysisComplete} pipelineActive={isInPipeline} />
-          ) : slug === "data-agent" ? (
+          ) : slug === "external" ? (
             <ShipmentsChat />
-          ) : slug === "attacker-agent" ? (
+          ) : slug === "internal" ? (
             <ChatInterface />
           ) : slug === "response-agent" ? (
             <ResponseAgentTest />
@@ -180,14 +180,14 @@ export default function AgentPage({ params }: AgentPageProps) {
         </motion.div>
 
         {/* Right Panel */}
-        {slug !== "attacker-agent" && slug !== "behavior-agent" && (
+        {slug !== "internal" && slug !== "behavior-agent" && (
         <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
           className="h-full min-h-[400px] lg:col-span-4"
         >
-          {slug === "data-agent" ? (
+          {slug === "external" ? (
             <ShipmentsContact />
           ) : (
             <TerminalLogs agentSlug={slug} liveLogs={isLiveAgent && combinedLogs.length > 0 ? combinedLogs : undefined} />

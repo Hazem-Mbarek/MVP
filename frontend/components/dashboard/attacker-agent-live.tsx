@@ -16,6 +16,70 @@ const starterMessages = [
   { from: "them" as const, text: "Prompt the model with a question." },
 ]
 
+// Convert task description to gerund form (e.g., "Retrieve X..." -> "Retrieving X...")
+function toGerundForm(description: string): string {
+  // Simple conversion: find first verb and convert to gerund
+  if (!description) return "Processing"
+  
+  // Remove trailing period
+  const clean = description.replace(/\.$/, "")
+  
+  // Common pattern: "Verb noun phrase"
+  const verbMatch = clean.match(/^(Retrieve|Find|Search|Query|Check|Determine|Identify|Analyze|Look up|Compare)/)
+  if (verbMatch) {
+    const verb = verbMatch[1]
+    const rest = clean.substring(verb.length).trim()
+    const gerund = verb.replace(/e$/, "") + "ing"
+    return `${gerund} ${rest}...`
+  }
+  
+  return clean + "..."
+}
+
+// Throbber/indeterminate progress indicator component
+function ThrobberAnimation() {
+  return (
+    <style>{`
+      @keyframes throbber-pulse {
+        0% {
+          opacity: 0.4;
+          transform: scale(0.8);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0.4;
+          transform: scale(0.8);
+        }
+      }
+      
+      .throbber {
+        display: inline-flex;
+        gap: 2px;
+        align-items: center;
+      }
+      
+      .throbber-dot {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background-color: currentColor;
+        animation: throbber-pulse 1.4s ease-in-out infinite;
+      }
+      
+      .throbber-dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      
+      .throbber-dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+    `}</style>
+  )
+}
+
 export function ChatList() {
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
@@ -61,15 +125,34 @@ export function ChatList() {
 export function ChatInterface() {
   const [thread, setThread] = useState(starterMessages)
   const [loading, setLoading] = useState(false)
+  const [taskProgress, setTaskProgress] = useState<string | null>(null)
 
   const handleSendMessage = async (text: string) => {
     // Add user message immediately
     setThread((prev) => [...prev, { from: "me", text }])
     setLoading(true)
+    setTaskProgress(null)
 
     try {
-      const { sendMessage } = await import("@/lib/openrouter")
-      const response = await sendMessage(text)
+      const { sendMessageWithStreaming } = await import("@/lib/openrouter")
+      
+      const response = await sendMessageWithStreaming(text, (event) => {
+        // Update UI based on task events
+        if (event.type === "decomposition_complete" && event.data) {
+          try {
+            const tasks = JSON.parse(event.data)
+            setTaskProgress(`Analyzing question into ${tasks.length} steps`)
+          } catch (e) {
+            setTaskProgress("Analyzing question")
+          }
+        } else if (event.type === "task_started" && event.taskDescription) {
+          const gerundForm = toGerundForm(event.taskDescription)
+          setTaskProgress(gerundForm)
+        } else if (event.type === "task_complete" && event.taskId) {
+          setTaskProgress(null)
+        }
+      })
+
       setThread((prev) => [...prev, { from: "them", text: response }])
     } catch (error) {
       const errorMessage =
@@ -80,11 +163,13 @@ export function ChatInterface() {
       ])
     } finally {
       setLoading(false)
+      setTaskProgress(null)
     }
   }
 
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
+      <ThrobberAnimation />
       <CardHeader className="shrink-0 border-b border-border p-3">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-blue-500" />
@@ -117,10 +202,13 @@ export function ChatInterface() {
             </div>
           </div>
         ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Thinking...</p>
+        {loading && taskProgress && (
+          <div className="flex justify-start items-center gap-2">
+            <p className="text-xs text-muted-foreground">{taskProgress}</p>
+            <div className="throbber text-muted-foreground">
+              <div className="throbber-dot" />
+              <div className="throbber-dot" />
+              <div className="throbber-dot" />
             </div>
           </div>
         )}

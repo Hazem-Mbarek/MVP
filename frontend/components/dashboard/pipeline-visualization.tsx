@@ -17,10 +17,10 @@ import {
 } from "lucide-react"
 
 const agentIcons = {
-  "data-agent": Database,
+  "external": Database,
   "behavior-agent": Brain,
   "risk-behavior-agent": AlertTriangle,
-  "attacker-agent": Swords,
+  "internal": Swords,
   "response-agent": Shield,
 }
 
@@ -61,7 +61,7 @@ const statusConfig: Record<AgentStatus, {
   }
 }
 
-export type PipelineSource = "data-agent" | "attacker-agent"
+export type PipelineSource = "external" | "internal"
 
 interface PipelineVisualizationProps {
   agentStatuses?: Record<string, AgentStatus>
@@ -162,15 +162,15 @@ function Connector({ animated, dimmed, index }: { animated?: boolean; dimmed?: b
 }
 
 export function PipelineVisualization({ agentStatuses, pipelineSource = "data-agent", onSourceChange }: PipelineVisualizationProps) {
-  const dataAgent = agents.find(a => a.slug === "data-agent")!
-  const attackerAgent = agents.find(a => a.slug === "attacker-agent")!
+  const dataAgent = agents.find(a => a.slug === "external")!
+  const attackerAgent = agents.find(a => a.slug === "internal")!
   
   // Downstream agents (after the source)
   const downstreamSlugs = ["behavior-agent", "risk-behavior-agent", "response-agent"]
   const downstreamAgents = downstreamSlugs.map(slug => agents.find(a => a.slug === slug)!).filter(Boolean)
 
-  const isDataActive = pipelineSource === "data-agent"
-  const isAttackerActive = pipelineSource === "attacker-agent"
+  const isDataActive = pipelineSource === "external"
+  const isAttackerActive = pipelineSource === "internal"
 
   const getStatus = (slug: string): AgentStatus => {
     return agentStatuses?.[slug] ?? "idle"
@@ -184,7 +184,7 @@ export function PipelineVisualization({ agentStatuses, pipelineSource = "data-ag
           {/* Data Agent - Top */}
           <div 
             className="cursor-pointer" 
-            onClick={(e) => { e.preventDefault(); onSourceChange?.("data-agent") }}
+            onClick={(e) => { e.preventDefault(); onSourceChange?.("external") }}
           >
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -193,8 +193,8 @@ export function PipelineVisualization({ agentStatuses, pipelineSource = "data-ag
                 "group relative flex h-[52px] w-36 cursor-pointer flex-col items-center justify-center rounded border-2 p-2 transition-all",
                 isDataActive 
                   ? cn(
-                      statusConfig[getStatus("data-agent")].bgColor,
-                      statusConfig[getStatus("data-agent")].borderColor,
+                      statusConfig[getStatus("external")].bgColor,
+                      statusConfig[getStatus("external")].borderColor,
                       "ring-2 ring-blue-500/40"
                     )
                   : "border-zinc-700/30 bg-zinc-800/20 opacity-50 hover:opacity-70"
@@ -203,7 +203,7 @@ export function PipelineVisualization({ agentStatuses, pipelineSource = "data-ag
               <div className="flex items-center gap-2">
                 <Database className={cn(
                   "h-4 w-4",
-                  isDataActive ? statusConfig[getStatus("data-agent")].color : "text-zinc-600"
+                  isDataActive ? statusConfig[getStatus("external")].color : "text-zinc-600"
                 )} />
                 <span className={cn(
                   "text-[11px] font-medium",
@@ -215,11 +215,11 @@ export function PipelineVisualization({ agentStatuses, pipelineSource = "data-ag
               {isDataActive && (
                 <div className={cn(
                   "mt-1 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[8px] font-medium uppercase tracking-wider",
-                  statusConfig[getStatus("data-agent")].bgColor,
-                  statusConfig[getStatus("data-agent")].color
+                  statusConfig[getStatus("external")].bgColor,
+                  statusConfig[getStatus("external")].color
                 )}>
                   {(() => {
-                    const s = getStatus("data-agent")
+                    const s = getStatus("external")
                     const SIcon = statusConfig[s].icon
                     return <><SIcon className={cn("h-2 w-2", s === "processing" && "animate-spin")} /><span>{statusConfig[s].label}</span></>
                   })()}
@@ -231,7 +231,7 @@ export function PipelineVisualization({ agentStatuses, pipelineSource = "data-ag
           {/* Attacker Agent - Bottom */}
           <div 
             className="cursor-pointer"
-            onClick={(e) => { e.preventDefault(); onSourceChange?.("attacker-agent") }}
+            onClick={(e) => { e.preventDefault(); onSourceChange?.("internal") }}
           >
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -241,8 +241,8 @@ export function PipelineVisualization({ agentStatuses, pipelineSource = "data-ag
                 "group relative flex h-[52px] w-36 cursor-pointer flex-col items-center justify-center rounded border-2 p-2 transition-all",
                 isAttackerActive 
                   ? cn(
-                      statusConfig[getStatus("attacker-agent")].bgColor,
-                      statusConfig[getStatus("attacker-agent")].borderColor,
+                      statusConfig[getStatus("internal")].bgColor,
+                      statusConfig[getStatus("internal")].borderColor,
                       "ring-2 ring-red-500/40"
                     )
                   : "border-zinc-700/30 bg-zinc-800/20 opacity-50 hover:opacity-70"
@@ -263,11 +263,11 @@ export function PipelineVisualization({ agentStatuses, pipelineSource = "data-ag
               {isAttackerActive && (
                 <div className={cn(
                   "mt-1 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[8px] font-medium uppercase tracking-wider",
-                  statusConfig[getStatus("attacker-agent")].bgColor,
-                  statusConfig[getStatus("attacker-agent")].color
+                  statusConfig[getStatus("internal")].bgColor,
+                  statusConfig[getStatus("internal")].color
                 )}>
                   {(() => {
-                    const s = getStatus("attacker-agent")
+                    const s = getStatus("internal")
                     const SIcon = statusConfig[s].icon
                     return <><SIcon className={cn("h-2 w-2", s === "processing" && "animate-spin")} /><span>{statusConfig[s].label}</span></>
                   })()}

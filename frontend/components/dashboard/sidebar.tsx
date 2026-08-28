@@ -15,8 +15,8 @@ import {
 
 const navItems = [
   { name: "Overview", href: "/", icon: Home },
-  { name: "Inbox", href: "/agents/data-agent", icon: Inbox },
-  { name: "Chatbot", href: "/agents/attacker-agent", icon: Bot },
+  { name: "Inbox", href: "/agents/external", icon: Inbox },
+  { name: "Agent", href: "/agents/internal", icon: Bot },
   { name: "Processes", href: "/processes", icon: Workflow },
   { name: "Knowledge Base", href: "/knowledge-base", icon: BookOpen },
   { name: "Settings", href: "/settings", icon: Settings },

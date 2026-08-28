@@ -96,10 +96,6 @@ export async function initEmbeddings() {
   }
 }
 
-/**
- * Embed a query using persistent Python process
- * Returns 384-dimensional vector as array
- */
 export async function embed(text: string): Promise<number[]> {
   if (!embeddingProcess || !isReady) {
     throw new Error("Embedding service not initialized")
@@ -131,6 +127,11 @@ export async function embed(text: string): Promise<number[]> {
     try {
       embeddingProcess.stdin.write(text + "\n")
     } catch (error) {
+      // Remove from queue if write fails
+      const index = queryQueue.length - 1
+      if (index >= 0) {
+        queryQueue.splice(index, 1)
+      }
       reject(new Error("Failed to send query to embedding service"))
     }
   })

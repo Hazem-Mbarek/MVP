@@ -34,7 +34,7 @@ export const agents: Agent[] = [
   {
     id: "1",
     name: "Inbox",
-    slug: "data-agent",
+    slug: "external",
     role: "Data Collection & Normalization",
     description: "Collects and normalizes security data from multiple sources including SIEM, firewalls, endpoint detection systems, and network traffic analyzers.",
     inputType: "Raw Security Events",
@@ -50,7 +50,7 @@ export const agents: Agent[] = [
   {
     id: "2",
     name: "Chatbot",
-    slug: "attacker-agent",
+    slug: "internal",
     role: "Attack Simulation & Testing",
     description: "Simulates realistic attack patterns using LLM-powered intelligence to test security detection capabilities and generate training data.",
     inputType: "System Context & Collected Data",

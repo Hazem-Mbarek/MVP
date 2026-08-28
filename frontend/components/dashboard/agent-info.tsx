@@ -27,8 +27,8 @@ interface AgentInfoProps {
 }
 
 const agentIcons = {
-  "data-agent": Database,
-  "attacker-agent": Swords,
+  "external": Database,
+  "internal": Swords,
   "behavior-agent": Brain,
   "risk-behavior-agent": AlertTriangle,
   "response-agent": Shield,
