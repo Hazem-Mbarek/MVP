@@ -37,10 +37,15 @@ export function loadYAMLData() {
     const transportContent = fs.readFileSync(transportPath, "utf-8")
     const compatContent = fs.readFileSync(compatPath, "utf-8")
     
-    transportCompat = (yaml.load(transportContent) as any) || {}
-    incotermsComp = (yaml.load(compatContent) as any) || {}
+    const transportData = yaml.load(transportContent) as any
+    const compatData = yaml.load(compatContent) as any
+    
+    // Handle nested structure in comparison.yaml
+    transportCompat = transportData || {}
+    incotermsComp = compatData?.incoterms_comparison || compatData || {}
     
     console.log("[YAML-TOOLS] Loaded transport compatibility and incoterms comparison")
+    console.log(`[YAML-TOOLS] Loaded ${Object.keys(incotermsComp).length} incoterms for comparison`)
   } catch (error) {
     console.error("[YAML-TOOLS] Error loading YAML data:", error)
     throw error
