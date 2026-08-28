@@ -171,3 +171,136 @@ v1.0 - 2026-08-28
   - 88 realistic logistics jobs with CMR/Incoterms compliance
   - Issue tracking system (9 sample issues)
   - Complete company organizational structure (44 employees, 8 departments)
+
+# Knowledge System (NEW - Backend)
+#   - @xenova/transformers@2.6.5 (local ONNX embeddings)
+#   - js-yaml@4.1.0 (YAML parsing for lookups)
+#   - axios@1.6.2 (HTTP client)
+
+# Installation:
+#   cd backend
+#   npm install
+#   npm run build-index  (one-time setup, ~5-10 min)
+
+# ============================================================
+# DATABASE: SQLite
+# ============================================================
+# See: data/knowledge/company/database/README.md
+# File: data/knowledge/company/database/loghub.db
+#   - 14 tables (9 operational + 4 commercial + system)
+#   - 44 employees, 18 clients, 88 jobs, 2 warehouses, 8 vehicles
+#   - Seeded with realistic logistics data
+
+# Setup:
+#   sqlite3 data/knowledge/company/database/loghub.db < data/knowledge/company/database/create_sqlite.sql
+#   sqlite3 data/knowledge/company/database/loghub.db < data/knowledge/company/database/create_com.sql
+#   sqlite3 data/knowledge/company/database/loghub.db < data/knowledge/company/database/seed2.sql
+
+# ============================================================
+# KNOWLEDGE BASE (NEW)
+# ============================================================
+# Data sources for staff knowledge wiki:
+#   - FAQ: data/knowledge/faq/faq.jsonl (50 Q&A entries)
+#   - Incoterms: data/knowledge/incoterms/incoterms.jsonl (11 rules + sections)
+#   - CMR: data/knowledge/cmr/cmr.jsonl (31 articles + 104 sub-records)
+#   - Transport compat: data/knowledge/incoterms/transport_compatibility.yaml
+#   - Incoterms comparison: data/knowledge/incoterms/comparison.yaml
+
+# Total embeddings-ready: 228 discrete records
+# Processed by: data/parse_incoterms.py, data/parse_cmr.py
+
+# ============================================================
+# EXTERNAL SERVICES
+# ============================================================
+# OpenRouter API (LLM)
+#   - Model: gpt-oss-120b (via OpenRouter)
+#   - Supports function calling (tools)
+#   - API Key: Set in backend/.env (OPENROUTER_API_KEY)
+#   - No embedding costs (using local @xenova/transformers)
+
+# ============================================================
+# RUNNING THE PROJECT
+# ============================================================
+
+# 1. Setup backend knowledge index (one-time):
+#    cd backend
+#    npm install
+#    npm run build-index
+
+# 2. Start backend (terminal 1):
+#    cd backend
+#    npm run dev
+#    → Runs on http://localhost:5000
+
+# 3. Start frontend (terminal 2):
+#    cd frontend
+#    npm run dev
+#    → Runs on http://localhost:3000
+
+# ============================================================
+# ENVIRONMENT VARIABLES
+# ============================================================
+
+# Backend (.env file in backend/):
+#   OPENROUTER_API_KEY=<your-api-key>
+#   OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+#   OPENROUTER_MODEL=gpt-oss-120b
+#   PORT=5000
+#   NODE_ENV=development
+#   FRONTEND_URL=http://localhost:3000
+
+# Frontend (.env.local file in frontend/):
+#   NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+
+# ============================================================
+# KEY FEATURES (CURRENT PHASE)
+# ============================================================
+
+# Chatbot (Pages: Chatbot)
+#   - Real-time chat with AI assistant
+#   - Automatic tool selection for knowledge queries
+#   - Semantic search across FAQ/incoterms/CMR
+#   - Transport compatibility checks
+#   - Incoterm comparisons with citation
+#   - Graceful fallback for unsupported questions
+
+# Processes Page (Pages: Processes)
+#   - List view of logistics processes
+#   - Output/results viewer
+#   - Terminal logs display
+
+# Knowledge Base (Pages: Knowledge Base)
+#   - Browseable FAQ, incoterms, CMR articles
+#   - Document viewer with syntax highlighting
+#   - Folder structure navigation
+
+# Settings (Pages: Settings)
+#   - Team & account management
+#   - Agent configuration
+#   - Advanced settings
+
+# ============================================================
+# VERSION HISTORY
+# ============================================================
+
+# v0.1.0 - 2026-08-28
+#   - Initial MVP setup
+#   - Frontend: Next.js pages (Chatbot, Processes, Knowledge Base, Settings)
+#   - Backend: Express.js with OpenRouter integration
+#   - Knowledge: Local embeddings + YAML lookups
+#   - Database: SQLite with operational + commercial data
+#   - Chat: Tool-calling support for knowledge queries
+
+
+
+# ============================================================
+# PYTHON DEPENDENCIES (for embedding generation)
+# ============================================================
+# Install with: pip install -r requirements.txt
+
+sentence-transformers>=2.2.0
+torch>=2.0.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+scipy>=1.7.0
+

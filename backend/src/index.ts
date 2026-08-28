@@ -2,8 +2,31 @@ import express from "express"
 import cors from "cors"
 import { config } from "./config"
 import chatRoutes from "./routes/chat.routes"
+import { loadYAMLData } from "./knowledge/yaml-tools"
+import { loadIndex } from "./knowledge/search"
+import { initEmbeddings } from "./knowledge/embeddings"
 
 const app = express()
+
+// Initialize knowledge system
+async function initializeKnowledge() {
+  console.log("[KNOWLEDGE] Initializing knowledge system...")
+  try {
+    // Initialize embedding model
+    await initEmbeddings()
+    
+    // Load YAML lookup tables
+    loadYAMLData()
+    
+    // Load vector search index
+    await loadIndex()
+    
+    console.log("[KNOWLEDGE] ✓ Knowledge system initialized")
+  } catch (error) {
+    console.error("[KNOWLEDGE] Failed to initialize:", error)
+    // Don't exit - system can still work with degraded search
+  }
+}
 
 // Middleware
 console.log("[SERVER] Setting up middleware...")
@@ -57,11 +80,15 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 })
 
 const port = config.port
-app.listen(port, () => {
-  console.log(`\n${"=".repeat(60)}`)
-  console.log(`🚀 LogHub Backend running on http://localhost:${port}`)
-  console.log(`📝 Environment: ${config.nodeEnv}`)
-  console.log(`🔌 OpenRouter Model: ${config.openrouter.model}`)
-  console.log(`🌐 Frontend URL: ${config.frontend.url}`)
-  console.log(`${"=".repeat(60)}\n`)
+
+// Start server with knowledge initialization
+initializeKnowledge().then(() => {
+  app.listen(port, () => {
+    console.log(`\n${"=".repeat(60)}`)
+    console.log(`🚀 LogHub Backend running on http://localhost:${port}`)
+    console.log(`📝 Environment: ${config.nodeEnv}`)
+    console.log(`🔌 OpenRouter Model: ${config.openrouter.model}`)
+    console.log(`🌐 Frontend URL: ${config.frontend.url}`)
+    console.log(`${"=".repeat(60)}\n`)
+  })
 })
