@@ -21,6 +21,8 @@ export class OpenRouterService {
   }
 
   async sendMessage(userMessage: string): Promise<string> {
+    console.log("[OPENROUTER] Sending message:", userMessage.substring(0, 50) + "...")
+    
     const messages: ChatMessage[] = [
       {
         role: "system",
@@ -33,6 +35,10 @@ export class OpenRouterService {
     ]
 
     try {
+      console.log(`[OPENROUTER] Making request to ${this.baseUrl}/chat/completions`)
+      console.log(`[OPENROUTER] Model: ${this.model}`)
+      console.log(`[OPENROUTER] API Key set: ${this.apiKey ? "YES" : "NO"}`)
+      
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
@@ -53,15 +59,26 @@ export class OpenRouterService {
         }
       )
 
+      console.log("[OPENROUTER] Response received, status:", response.status)
+      
       const content = response.data.choices?.[0]?.message?.content
       if (!content) {
+        console.error("[OPENROUTER] Empty response from API:", response.data)
         throw new Error("Empty response from OpenRouter API")
       }
 
+      console.log("[OPENROUTER] Message generated successfully")
       return content
     } catch (error) {
+      console.error("[OPENROUTER] Error:", error)
+      
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError<any>
+        console.error("[OPENROUTER] Axios error details:")
+        console.error("  - Status:", axiosError.response?.status)
+        console.error("  - Data:", axiosError.response?.data)
+        console.error("  - Message:", axiosError.message)
+        
         const message =
           axiosError.response?.data?.error?.message ||
           axiosError.message ||

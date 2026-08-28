@@ -1,6 +1,9 @@
 import dotenv from "dotenv"
+import path from "path"
 
-dotenv.config()
+const envPath = path.resolve(__dirname, "../.env")
+console.log(`[CONFIG] Loading .env from: ${envPath}`)
+dotenv.config({ path: envPath })
 
 export const config = {
   port: process.env.PORT || 5000,
@@ -15,7 +18,16 @@ export const config = {
   },
 }
 
+// Log configuration (without exposing full API key)
+console.log("[CONFIG] Environment variables loaded:")
+console.log(`  - PORT: ${config.port}`)
+console.log(`  - NODE_ENV: ${config.nodeEnv}`)
+console.log(`  - OPENROUTER_API_KEY: ${config.openrouter.apiKey ? "SET" : "MISSING"}`)
+console.log(`  - OPENROUTER_BASE_URL: ${config.openrouter.baseUrl}`)
+console.log(`  - OPENROUTER_MODEL: ${config.openrouter.model}`)
+console.log(`  - FRONTEND_URL: ${config.frontend.url}`)
+
 // Validate required config
 if (!config.openrouter.apiKey) {
-  throw new Error("OPENROUTER_API_KEY is required")
+  throw new Error("OPENROUTER_API_KEY is required in .env file")
 }
