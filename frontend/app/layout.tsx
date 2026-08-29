@@ -61,11 +61,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ClientProviders>
-            <div className="flex min-h-screen">
+            <div className="flex h-screen">
               <Sidebar />
               <div className="flex flex-1 flex-col pl-64">
                 <Navbar />
-                <main className="flex-1">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">
                   {children}
                 </main>
               </div>

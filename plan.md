@@ -1,81 +1,93 @@
-# Staff Knowledge Wiki — Build Instructions
+# Task: Expose local frontend + backend via Cloudflare Tunnel
 
 ## Objective
-Build the staff-persona Knowledge/Wiki MVP: a grounded, source-cited Q&A tool layer over the company's regulatory/knowledge data. Expose it as tools for the existing Node/TypeScript chat backend, which already orchestrates via `openai/gpt-oss-120b` through OpenRouter.
+Make this local monorepo reachable over public HTTPS for a ~2-day live demo, using free Cloudflare quick tunnels. Repo layout: `frontend/` (Next.js) and `backend/` (Node/TS service with `chat.routes`, `external-chat.routes`, `knowledge.routes`, `agent-orchestrator`, `external-agent-orchestrator`, `openrouter.service`, and a `knowledge/` module with `embeddings`, `build-index`, `search`, `database-tools`), each currently only reachable on localhost.
 
-You have liberty to pick the specific libraries/implementation for each piece below — this doc gives the architecture constraints and, where a choice matters, a ranked set of options. Pick whichever fits the existing codebase best.
+Do not guess ports, env var names, calling patterns, or config locations — inspect the actual files in this repo before acting, since values differ per project and this doc was written without reading the source.
 
-## Scope (this phase only)
-- Staff persona only. Read-only. No writes, no communication hub, no workflow automation yet.
-- Data sources in play: `faq.jsonl`, `incoterms.jsonl`, `cmr.jsonl`, `incoterms_comparison.yaml`, `transport_compatibility.yaml`.
-- The SQLite operational DB (clients, jobs, warehouses, etc.) is **out of scope** for this phase.
+## Tasks (execute in order)
 
-## Architecture principle — this is not pure RAG
-- **The two YAML files are deterministic lookup tables.** Never embed them. Never let semantic search answer a compatibility or attribute-comparison question — load them into memory at startup and expose plain lookup functions instead.
-- **The JSONL files (faq, incoterms, cmr) are unstructured/narrative.** Embed and retrieve these semantically.
-- `incoterms.jsonl` has some structured fields that duplicate YAML logic (`mode_scope`, `road_compatible`, `category`). Treat these as metadata for filtering search results only — the YAML files remain the source of truth for any compatibility or attribute claim, to avoid the two sources ever disagreeing in an answer.
+### 1. Verify/install cloudflared
+- Check: `cloudflared --version`
+- If missing:
+  - macOS: `brew install cloudflared`
+  - Linux: download the appropriate `.deb`/`.rpm`/binary from `https://github.com/cloudflare/cloudflared/releases`
+  - Windows: `winget install --id Cloudflare.cloudflared`
+- No login or Cloudflare account is required for a quick tunnel (`cloudflared tunnel --url ...`).
 
-## Tools to expose to the chat backend
-Use the same tool-schema shape (OpenAI-style function definitions) your backend already uses for `gpt-oss-120b` via OpenRouter, so these register alongside existing tools with no special-casing.
+### 2. Determine the backend's port
+- Check `backend/.env` and `backend/.env.example` for a `PORT` variable.
+- Cross-check against source: `grep -rn "\.listen(" backend/src` to find the port actually used at runtime.
+- Record this value as `BACKEND_PORT`.
 
-1. **`search_knowledge(query, source_filter?, top_k=5)`** — semantic search across embedded FAQ/incoterms/CMR chunks. Returns chunk text plus citation metadata (`id`, `source`, and `article_number` or `code` where applicable).
-2. **`check_transport_compatibility(mode, incoterm)`** — deterministic lookup against `transport_compatibility.yaml`.
-3. **`compare_incoterms(codes: string[])`** — deterministic lookup against `incoterms_comparison.yaml`, returns attributes side by side.
+### 3. Start the backend
+- `cd backend && npm install` (if `node_modules` is missing or stale)
+- Run the start script from `backend/package.json` (typically `npm run dev` or `npm start`)
+- Confirm it's listening: `curl http://localhost:$BACKEND_PORT`
 
-System prompt instruction for the backend: **always cite** id/source in the final answer, and **prefer the YAML tools over semantic search** whenever the question is about compatibility or a direct attribute comparison.
+### 4. Tunnel the backend
+- In a new process: `cloudflared tunnel --url http://localhost:$BACKEND_PORT`
+- Capture the printed `https://<random-words>.trycloudflare.com` URL as `BACKEND_TUNNEL_URL`
+- This process must keep running uninterrupted for the full demo window.
 
-## Decision points — ranked options, pick what fits
+### 5. Determine the frontend's calling pattern (this decides the networking approach)
+Inspect `frontend/lib/api.ts` and any files under `frontend/app/api/` (if present). Two possible patterns exist — identify which one this repo uses:
 
-### Embedding model (must be free, no paid API)
-1. **Recommended:** `@huggingface/transformers` (npm) running `Xenova/bge-small-en-v1.5` — local ONNX inference in Node, no API key, no Python dependency.
-2. `Xenova/gte-small` via the same package — lighter and faster, slightly lower retrieval quality.
-3. Ollama running a local embedding model (e.g. `nomic-embed-text`) — fine if Ollama is already in the stack, but adds a separate process to manage.
+- **Pattern A — Server-side proxy:** `frontend/app/api/*/route.ts` files exist and `lib/api.ts` calls relative paths (e.g. `fetch('/api/chat')`) from client components. The Next.js server itself forwards the request to the backend server-side.
+- **Pattern B — Direct client calls:** `lib/api.ts` calls an absolute backend URL (e.g. `fetch(process.env.NEXT_PUBLIC_API_URL + '/chat')`) directly from browser/client-component code, with no Next.js proxy route in between.
 
-Avoid paid embedding APIs (OpenAI, Voyage, Cohere) for this phase.
+This determines which of steps 6a/6b applies. **Prefer Pattern A if you have the choice** — it avoids CORS entirely (browser only ever talks to the frontend's own origin) and keeps the backend's tunnel URL private, which matters here since this backend also exposes `knowledge.routes` (search/embeddings) that shouldn't need to be browser-reachable at all.
 
-### Vector storage / search
-1. **Recommended:** In-memory. Embed once at build time, persist as JSON (`id`, `text`, `metadata`, `vector`), load at boot, brute-force cosine similarity. The corpus is ~228 records total — this is fast and needs no extra infrastructure.
-2. `sqlite-vec` — reasonable if you want persistence/SQL queryability or expect the corpus to grow significantly.
-3. `LanceDB` (has a Node binding) — if you want a proper embedded vector index (HNSW) without running a separate server.
+### 6a. If Pattern A (server-side proxy)
+- In `frontend/.env.local`, set the internal backend URL (e.g. `BACKEND_URL=$BACKEND_TUNNEL_URL`, or keep it as `http://localhost:$BACKEND_PORT` — since this fetch happens server-side inside the Next.js process, it can reach the backend either via the tunnel URL or directly via localhost if both processes run on the same machine; localhost is actually simpler and skips a network hop).
+- No CORS changes needed — the browser only ever calls the frontend's own origin (`/api/...`), and the frontend server relays to the backend behind the scenes.
+- Confirm any streaming routes (see step 6c) are also being correctly relayed by the Next.js API route (i.e. it pipes the backend's stream through rather than buffering it — check for `await backendResponse.body` being piped, not `await backendResponse.json()` on a streaming endpoint).
 
-Don't reach for a hosted vector DB at this data size — it's unnecessary overhead.
+### 6b. If Pattern B (direct client calls)
+- In `frontend/.env.local`, set the API base URL env var (exact name confirmed from `lib/api.ts`, e.g. `NEXT_PUBLIC_API_URL`) to `BACKEND_TUNNEL_URL`. It must be the `https://...trycloudflare.com` URL, not `http://localhost` — the frontend will be served over HTTPS via its own tunnel, and browsers block HTTP calls from an HTTPS page (mixed content).
+- On the backend, locate CORS config: `grep -rn "cors(" backend/src`. Set `Access-Control-Allow-Origin` to the frontend's tunnel URL specifically once known (step 8) — not `*`, if any request uses cookies/credentials (see below). For the initial setup before the frontend tunnel exists, a temporary wildcard is acceptable for this short test window, but note this tradeoff in the final report.
+- Check whether requests carry auth cookies (`grep -rn "credentials" frontend/lib` and check for session/cookie-based auth in `backend/src`). If so:
+  - Frontend fetch calls need `credentials: 'include'`.
+  - Backend CORS needs `Access-Control-Allow-Credentials: true` and an explicit origin (not `*`, which is invalid alongside credentials).
+  - Any auth cookie set by the backend needs `SameSite=None; Secure`, since frontend and backend now sit on different subdomains (cross-site, not just cross-origin).
+- `external-chat.routes` and `external-agent-orchestrator` look like they're meant for server-to-server calls (an external service hitting the backend directly), not the browser. Confirm this by checking what calls them — if nothing in `frontend/` references them, they don't need browser CORS treatment at all; leave their access rules separate from the browser-facing `chat.routes`.
 
-### Chunking strategy
-- `faq.jsonl`: one chunk per record (question + answer combined as embedding text).
-- `incoterms.jsonl`: one chunk per section/subsection where present, else the full record. Keep `code`, `category`, `mode_scope` as metadata, not embedded text.
-- `cmr.jsonl`: already paragraph-granular — one chunk per record. Keep `article_number`, `title` as metadata.
+### 6c. Streaming responses (chat/agent endpoints)
+`chat.routes` and `agent-orchestrator` strongly suggest token-by-token streaming (SSE or chunked responses) for chat output. This needs explicit handling:
+- Check `backend/src` for `text/event-stream`, `res.write(`, or WebSocket upgrade handling to confirm the transport used.
+- **If SSE/chunked HTTP streaming:** Cloudflare quick tunnels support this, but confirm the backend response isn't buffered — response headers should include `Content-Type: text/event-stream` and `Cache-Control: no-cache`, and the handler should flush per chunk rather than building the full response before sending.
+- **If WebSockets:** `cloudflared tunnel --url` does proxy WebSocket upgrade traffic, but if a Pattern B CORS setup is used, confirm the backend's WS server doesn't reject connections based on `Origin` header mismatch (a common default check) — it needs to allow the frontend's tunnel origin explicitly, same as HTTP CORS.
+- Either way, test this specific path end-to-end (send an actual chat message through the tunnel) in step 9 — it's the piece most likely to silently break, since a non-streaming health check (`curl /health`) won't catch it.
 
-### YAML lookup implementation
-1. **Recommended:** parse both YAML files at process startup (`js-yaml` or `yaml` npm package), hold as plain in-memory objects, expose pure functions.
-2. Load into two small SQLite tables instead, if you want them queryable via SQL later — not needed for this phase.
+### 6d. Long-running knowledge/embedding operations
+`knowledge/build-index` and `knowledge/embeddings` suggest operations that may take longer than a typical request. If any route synchronously builds or rebuilds an index / generates embeddings inline:
+- Check whether this is invoked via a route that a browser request would wait on directly. Cloudflare's edge has a request timeout (order of ~100 seconds by default) — a long synchronous build could get cut off with no useful error.
+- If such an operation can run long, prefer triggering it as a background/async job with a separate status-check or polling endpoint, rather than one blocking request. If it already works this way, no change needed — just flag it as verified.
 
-### Tool-calling integration
-1. **Recommended:** consolidate the three tool schema+handler pairs into one module (e.g. `src/knowledge/tools.ts`) and import it wherever the backend already registers tools for `gpt-oss-120b`.
-2. If the existing backend has a plugin/tool-registry pattern, follow that pattern instead of introducing a new one.
+### 7. Start the frontend
+- `cd frontend && npm install` (if needed)
+- `npm run dev` — confirm the port from terminal output (Next.js defaults to 3000).
+- If `.env.local` was edited after the dev server was already running, restart it — env vars aren't hot-reloaded.
 
-## Citation requirement (non-negotiable)
-Every answer touching retrieved or looked-up content must cite:
-- JSONL-sourced content → `id`, `source` (faq/incoterms/cmr), plus `article_number` or `code` where applicable.
-- YAML-sourced content → which file (`transport_compatibility.yaml` or `incoterms_comparison.yaml`).
+### 8. Tunnel the frontend
+- In a new process: `cloudflared tunnel --url http://localhost:<frontend-port>`
+- Capture the printed URL as `FRONTEND_TUNNEL_URL`.
+- If Pattern B was used in step 6b with a temporary wildcard CORS origin, go back now and lock it to this exact `FRONTEND_TUNNEL_URL`.
 
-This needs to be enforced via the system prompt, not just left to tool descriptions.
+### 9. Verify end-to-end
+Test in this order, since each layer can fail independently of the others:
+1. `curl` the backend tunnel directly (`curl $BACKEND_TUNNEL_URL/health` or equivalent) — confirms the tunnel and backend process are up.
+2. Load `FRONTEND_TUNNEL_URL` in a browser — confirms the frontend tunnel and static rendering work.
+3. Trigger an actual chat/agent interaction through the UI, and watch for streaming output specifically — confirms steps 6a-6c are correct. Check the browser network tab / backend logs for CORS errors or a response that arrives all-at-once instead of streaming (buffering issue).
+4. If a knowledge-base/build-index feature is exposed in the UI, trigger it and confirm it doesn't hang or time out per step 6d.
 
-## Suggested file layout (adapt freely to existing conventions)
-```
-src/knowledge/
-  embeddings.ts     // embedding model wrapper
-  build-index.ts    // one-off script: read jsonl -> chunk -> embed -> write index file
-  search.ts         // load index at boot, cosine-sim top-k
-  yaml-tools.ts      // load both YAMLs, expose lookup functions
-  tools.ts           // tool schemas + handlers for backend registration
-  data/
-    index.json        // generated embedding index
-```
+### 10. Report back
+Output all of the following:
+- `BACKEND_TUNNEL_URL` and `FRONTEND_TUNNEL_URL` (the link to share is the frontend one)
+- Which pattern (A or B) was used, and why
+- Whether streaming was confirmed working end-to-end, not just via a plain health check
+- A note that the backend process, backend tunnel, frontend process, and frontend tunnel must all stay running uninterrupted, and the host machine must not sleep, for the full ~2-day window
 
-## Testing checklist before calling this done
-- [ ] Single-source FAQ question returns a correctly cited answer
-- [ ] Single-source CMR legal question returns the correct article citation
-- [ ] Compatibility question ("Can I ship FOB by rail?") routes to `check_transport_compatibility`, not semantic search
-- [ ] Comparison question ("CIP vs CIF") routes to `compare_incoterms`
-- [ ] Cross-source question ("we're quoting FOB by road — is that valid, and what does CMR say about liability if not?") correctly chains multiple tool calls
-- [ ] Questions with no supporting data are flagged as unanswered rather than hallucinated
+## Constraints
+- This is a temporary demo setup, not a production deployment. CORS wildcarding (if used temporarily) and plaintext `.env` values are acceptable tradeoffs only for this short window — flag this explicitly in the final report rather than silently applying or skipping production-grade hardening.
+- Free Cloudflare quick tunnels require no authentication and have no session time limit (unlike ngrok's free tier, which disconnects after ~8 hours).
