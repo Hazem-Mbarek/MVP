@@ -54,11 +54,12 @@ export async function searchKnowledge(
   topK: number = 5
 ): Promise<SearchResult[]> {
   if (index.length === 0) {
+    console.log("[SEARCH] Index is empty!")
     return []
   }
 
   try {
-    console.log(`[SEARCH] Searching for: "${query}"`)
+    console.log(`[SEARCH] Searching for: "${query}" (filter: ${sourceFilter || "none"})`)
     const queryVector = await embed(query)
     
     // Calculate similarity for all chunks
@@ -70,7 +71,9 @@ export async function searchKnowledge(
     // Filter by source if specified
     let filtered = scores
     if (sourceFilter) {
+      console.log(`[SEARCH] Filtering by source: "${sourceFilter}", total chunks: ${scores.length}`)
       filtered = scores.filter(s => s.metadata.source === sourceFilter)
+      console.log(`[SEARCH] After filtering: ${filtered.length} chunks`)
     }
     
     // Sort by similarity and take top-k
@@ -84,6 +87,9 @@ export async function searchKnowledge(
       }))
     
     console.log(`[SEARCH] Found ${results.length} results (best similarity: ${results[0]?.similarity.toFixed(3) || 'N/A'})`)
+    if (results.length > 0) {
+      console.log(`[SEARCH] Top result: "${results[0].text.substring(0, 100)}..."`)
+    }
     return results
   } catch (error) {
     console.error("[SEARCH] Error during search:", error)

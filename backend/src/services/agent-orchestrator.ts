@@ -10,7 +10,7 @@ export interface TaskDecomposition {
 export interface Task {
   id: string
   description: string
-  type: "incoterms" | "cmr" | "database" | "faq" | "transport_check" | "synthesis"
+  type: "incoterms" | "incoterms_comparison" | "cmr" | "database" | "faq" | "transport_check" | "synthesis"
   toolsNeeded: string[]
   instructions?: string
 }
@@ -31,7 +31,7 @@ const DECOMPOSITION_PROMPT = (q: string) =>
   "1. What data/knowledge is needed\n" +
   "2. Which tool would retrieve it\n\n" +
   "Return ONLY a JSON object (no markdown, no explanation) with tasks array.\n" +
-  "Each task: id, description, type (one of: incoterms, cmr, database, faq, transport_check, synthesis), toolsNeeded array.\n\n" +
+  "Each task: id, description, type (one of: incoterms, incoterms_comparison, cmr, database, faq, transport_check, synthesis), toolsNeeded array.\n\n" +
   "User question: " + q
 
 export type TaskEventListener = (event: TaskEvent) => void
@@ -145,6 +145,7 @@ export class AgentOrchestrator {
 
     switch (task.type) {
       case "incoterms":
+      case "incoterms_comparison":
         prompt =
           getRulesForTask("incoterms") +
           "\n\nTask: " +
@@ -199,8 +200,8 @@ export class AgentOrchestrator {
     }
 
     console.log(`[ORCHESTRATOR] Executing task ${task.id} with focused prompt (${prompt.length} chars)`)
-    // Don't include system prompt - task has its own focused rules
-    const result = await this.openrouterService.sendMessage(prompt, false)
+    // INCLUDE system prompt for task execution to enable tool calling
+    const result = await this.openrouterService.sendMessage(prompt, true)
 
     return {
       taskId: task.id,
@@ -214,13 +215,13 @@ export class AgentOrchestrator {
     originalQuestion: string,
     taskResults: TaskResult[]
   ): Promise<string> {
-    // Format task results clearly without task labels in final output
+    // Format task results with context about what each task was attempting
     const taskResultsFormatted = taskResults
       .map((tr) => {
-        // Only include result data, not task metadata
-        return tr.result
+        // Include task type context so synthesis understands what data source this came from
+        return `[${tr.taskId} - ${tr.taskDescription}]\n${tr.result}`
       })
-      .join("\n\n")
+      .join("\n\n---\n\n")
 
     const synthesisRules = getRulesForTask("synthesis")
 
@@ -230,13 +231,15 @@ export class AgentOrchestrator {
       originalQuestion +
       "\n\nInformation retrieved from knowledge sources:\n" +
       taskResultsFormatted +
-      "\n\nSynthesized Answer:\n" +
-      "Combine the above information into a single coherent answer that directly addresses the original question. " +
-      "Do NOT repeat task descriptions or labels like 'Task 1', 'Task 2', etc. " +
-      "Do NOT list information as separate bullet points for each task. " +
-      "Instead, weave the information together naturally. " +
-      "If some information was not found, mention that briefly but don't emphasize it. " +
-      "Focus on what was found and what matters for answering the question."
+      "\n\nSynthesized Answer Instructions:\n" +
+      "1. Combine the above information into a coherent answer directly addressing the original question.\n" +
+      "2. DO NOT output task labels or IDs in the final answer.\n" +
+      "3. DO NOT list information as separate sections for each task.\n" +
+      "4. Weave information together naturally, ordered by relevance to the question.\n" +
+      "5. If a task returned 'not found' or partial data, acknowledge what WAS found rather than dwelling on gaps.\n" +
+      "6. Prioritize answering the core question even if some supporting information is incomplete.\n" +
+      "7. Use all citations provided by the tasks.\n" +
+      "8. Output ONLY the final synthesized answer — no task metadata, no explanations of process."
 
     console.log("[ORCHESTRATOR] Sending synthesis prompt")
     // Don't include system prompt - synthesis has its own focused rules

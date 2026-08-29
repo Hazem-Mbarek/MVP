@@ -219,7 +219,8 @@ export class ExternalAgentOrchestrator {
     console.log(
       `[EXTERNAL-ORCHESTRATOR] Executing task ${task.id} with focused prompt (${prompt.length} chars)`
     )
-    const result = await this.openrouterService.sendMessage(prompt, false)
+    // INCLUDE system prompt for task execution to enable tool calling
+    const result = await this.openrouterService.sendMessage(prompt, true)
 
     return {
       taskId: task.id,
