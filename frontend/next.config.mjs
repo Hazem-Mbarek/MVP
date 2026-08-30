@@ -7,7 +7,7 @@ const nextConfig = {
     unoptimized: true,
   },
   // Allow all origins for dev resources (temporary demo setup)
-  allowedDevOrigins: ['progressive-mining-sufficient-genome.trycloudflare.com'],
+  allowedDevOrigins: ['crossword-dealt-fighter-land.trycloudflare.com'],
 }
 
 export default nextConfig

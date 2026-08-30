@@ -1,0 +1,11 @@
+SKU,Item Name,Category,Quantity On Hand,Reorder Level,Warehouse Location,Last Updated
+INV-001,GPS Tracking Unit,Hardware,450,100,Warehouse A - Shelf 12,2026-08-29
+INV-002,RFID Scanner,Hardware,320,75,Warehouse B - Section 5,2026-08-29
+INV-003,Communication Module,Hardware,680,150,Warehouse A - Shelf 8,2026-08-28
+INV-004,Power Supply Unit,Components,1200,300,Warehouse C - Area 3,2026-08-29
+INV-005,Data Cable Kit,Components,2100,500,Warehouse A - Shelf 15,2026-08-29
+INV-006,Router Device,Hardware,180,50,Warehouse B - Section 2,2026-08-27
+INV-007,Backup Battery,Components,890,200,Warehouse C - Area 1,2026-08-29
+INV-008,Mounting Hardware,Accessories,3400,1000,Warehouse A - Shelf 20,2026-08-29
+INV-009,Documentation Set,Literature,1500,300,Warehouse D - Archive,2026-08-28
+INV-010,Warranty Package,Services,560,100,Warehouse B - Office,2026-08-29

@@ -1,0 +1,11 @@
+Vehicle ID,Type,Registration,Driver,Status,Current Location,Utilization (%),Fuel Level (%),Maintenance Due,Last Service
+VH-001,Truck - 40T,VH-LGH-2024-001,Ahmed Hassan,In Transit,Frankfurt to Munich,92,78,2026-09-15,2026-07-22
+VH-002,Van - 12T,VH-LGH-2024-002,Maria Garcia,Idle,Distribution Center A,45,62,2026-10-05,2026-08-10
+VH-003,Truck - 20T,VH-LGH-2024-003,John Smith,Loaded,Rotterdam Port,88,45,2026-09-08,2026-06-30
+VH-004,Truck - 40T,VH-LGH-2024-004,Sophie Dupont,In Transit,Paris to Lyon,85,81,2026-09-20,2026-08-05
+VH-005,Van - 8T,VH-LGH-2024-005,Ahmed Mohamed,Idle,Warehouse B,52,55,2026-09-25,2026-08-15
+VH-006,Truck - 20T,VH-LGH-2024-006,Luis Garcia,Loaded,Madrid Hub,78,72,2026-09-10,2026-07-18
+VH-007,Truck - 40T,VH-LGH-2024-007,Henrik Larsen,In Transit,Hamburg to Berlin,91,68,2026-09-12,2026-08-01
+VH-008,Truck - 20T,VH-LGH-2024-008,Elena Rossi,Maintenance,Service Center,0,0,2026-08-31,In Progress
+VH-009,Van - 12T,VH-LGH-2024-009,David Brown,Idle,Distribution Center C,38,50,2026-10-15,2026-08-20
+VH-010,Truck - 40T,VH-LGH-2024-010,Yuki Tanaka,In Transit,Brussels to Amsterdam,89,75,2026-09-18,2026-07-25

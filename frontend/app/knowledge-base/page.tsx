@@ -42,6 +42,14 @@ const dataSources = [
     icon: Database,
     color: "text-red-500",
   },
+  {
+    id: "reports",
+    name: "Operational Reports",
+    description: "Sales, inventory, shipments, fleet, and financial reports",
+    items: 5,
+    icon: FileText,
+    color: "text-orange-500",
+  },
 ]
 
 const sourceDetails: Record<string, Array<{ name: string; path: string; type: string }>> = {
@@ -68,6 +76,13 @@ const sourceDetails: Record<string, Array<{ name: string; path: string; type: st
     { name: "loghub.db", path: "data/knowledge/company/database/loghub.db", type: "SQLite Database" },
     { name: "create_sqlite.sql", path: "data/knowledge/company/database/create_sqlite.sql", type: "Schema" },
     { name: "seed2.sql", path: "data/knowledge/company/database/seed2.sql", type: "Sample Data" },
+  ],
+  reports: [
+    { name: "Sales Report Q3 2026", path: "data/knowledge/reports/sales_report_q3_2026.csv", type: "Revenue Data" },
+    { name: "Inventory Snapshot", path: "data/knowledge/reports/inventory_snapshot.csv", type: "Stock Levels" },
+    { name: "Shipment Performance", path: "data/knowledge/reports/shipment_performance.csv", type: "Logistics" },
+    { name: "Fleet Utilization", path: "data/knowledge/reports/fleet_utilization.csv", type: "Operations" },
+    { name: "Financial Summary", path: "data/knowledge/reports/financial_summary.csv", type: "Financials" },
   ],
 }
 
@@ -536,6 +551,45 @@ export default function KnowledgeBasePage() {
                 <div className="max-w-none text-sm">
                   {selectedFile?.endsWith('.md') ? (
                     <MarkdownRenderer content={fileContent} />
+                  ) : selectedFile?.endsWith('.csv') ? (
+                    (() => {
+                      // Parse CSV
+                      const lines = fileContent.trim().split('\n')
+                      const headers = lines[0].split(',').map(h => h.trim())
+                      const rows = lines.slice(1).map(line => {
+                        const values = line.split(',').map(v => v.trim())
+                        return headers.reduce((obj, header, idx) => {
+                          obj[header] = values[idx] || ''
+                          return obj
+                        }, {} as Record<string, string>)
+                      })
+                      
+                      return (
+                        <div className="space-y-3">
+                          <div className="overflow-x-auto border border-border rounded">
+                            <table className="text-xs border-collapse w-full bg-white">
+                              <thead>
+                                <tr className="bg-blue-50 border-b border-border">
+                                  {headers.map((header, idx) => (
+                                    <th key={idx} className="border-r border-border px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">{header}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rows.map((row, ridx) => (
+                                  <tr key={ridx} className="border-b border-border hover:bg-blue-50">
+                                    {headers.map((header, cidx) => (
+                                      <td key={cidx} className="border-r border-border px-3 py-2 text-gray-700">{row[header]}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Total records: {rows.length}</p>
+                        </div>
+                      )
+                    })()
                   ) : selectedFile?.endsWith('.sql') ? (
                     <pre className="bg-zinc-900 p-3 rounded overflow-auto text-xs text-zinc-300">
                       <code>{fileContent}</code>

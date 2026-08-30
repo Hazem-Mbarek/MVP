@@ -31,8 +31,16 @@ const DECOMPOSITION_PROMPT = (q: string) =>
   "1. What data/knowledge is needed\n" +
   "2. Which tool would retrieve it\n\n" +
   "Return ONLY a JSON object (no markdown, no explanation) with tasks array.\n" +
-  "Each task: id, description, type (one of: incoterms, incoterms_comparison, cmr, database, faq, transport_check, synthesis), toolsNeeded array.\n\n" +
+  "Each task: id, description, type (one of: incoterms, incoterms_comparison, cmr, database, faq, transport_check, reports, synthesis), toolsNeeded array.\n\n" +
   "User question: " + q
+
+// For large Excel/report queries, split into focused sub-questions to avoid token limits
+const REPORT_QUERY_SPLITTER_PROMPT = (originalQ: string, reportNames: string[]) =>
+  "Break this report query into 2-3 focused sub-questions, each retrieving ONE specific report.\n\n" +
+  "Available reports:\n" + reportNames.map(r => `- ${r}`).join("\n") + "\n\n" +
+  "Original question: " + originalQ + "\n\n" +
+  "Return ONLY a JSON object with 'subQuestions' array (each with 'question' and 'targetReports' array).\n" +
+  "Keep each question focused and under 200 tokens worth of text."
 
 export type TaskEventListener = (event: TaskEvent) => void
 
@@ -64,53 +72,70 @@ export class AgentOrchestrator {
   async processQuestion(userQuestion: string): Promise<string> {
     console.log("[ORCHESTRATOR] === START processQuestion ===")
     console.log("[ORCHESTRATOR] User question:", userQuestion)
-
-    // STEP 1: Decompose the question
-    console.log("[ORCHESTRATOR] === STEP 1: DECOMPOSITION ===")
-    const decomposition = await this.decomposeQuestion(userQuestion)
-    console.log("[ORCHESTRATOR] Decomposition complete, tasks:", decomposition.tasks.length)
-    console.log("[ORCHESTRATOR] Tasks:", JSON.stringify(decomposition.tasks, null, 2))
-
-    // Emit decomposition event
-    this.emitEvent({
-      type: "decomposition_complete",
-      data: JSON.stringify(decomposition.tasks.map((t) => ({ id: t.id, description: t.description, type: t.type }))),
-    })
-
-    // STEP 2: Execute each task
-    console.log("[ORCHESTRATOR] === STEP 2: TASK EXECUTION ===")
-    const taskResults: TaskResult[] = []
-    for (const task of decomposition.tasks) {
-      if (task.type === "synthesis") {
-        console.log("[ORCHESTRATOR] Skipping synthesis task for now, will run last")
-        continue
-      }
-      console.log(`[ORCHESTRATOR] Executing task: ${task.id} (${task.type})`)
-
-      // Emit task start event
-      this.emitEvent({
-        type: "task_started",
-        taskId: task.id,
-        taskDescription: task.description,
-        taskType: task.type,
-      })
-
-      const result = await this.executeTask(task, userQuestion)
-      taskResults.push(result)
-
-      // Emit task complete event
-      this.emitEvent({
-        type: "task_complete",
-        taskId: task.id,
-        data: result.result.substring(0, 200), // Send preview
-      })
-
-      console.log(`[ORCHESTRATOR] Task ${task.id} complete, result length: ${result.result.length}`)
+    
+    // Check if this is a large report/excel query that needs splitting
+    let questionsToProcess = [userQuestion]
+    if (this.isLargeReportQuery(userQuestion)) {
+      console.log("[ORCHESTRATOR] Detected large report query, splitting into sub-questions")
+      questionsToProcess = await this.splitReportQuery(userQuestion)
+      console.log("[ORCHESTRATOR] Split into", questionsToProcess.length, "sub-questions")
     }
 
-    // STEP 3: Synthesize results
-    console.log("[ORCHESTRATOR] === STEP 3: SYNTHESIS ===")
-    const finalAnswer = await this.synthesizeResults(userQuestion, taskResults)
+    // Process each question and collect results
+    let allResults: string[] = []
+    for (const q of questionsToProcess) {
+      console.log("[ORCHESTRATOR] Processing question:", q.substring(0, 80) + "...")
+      
+      // STEP 1: Decompose the question
+      console.log("[ORCHESTRATOR] === STEP 1: DECOMPOSITION ===")
+      const decomposition = await this.decomposeQuestion(q)
+      console.log("[ORCHESTRATOR] Decomposition complete, tasks:", decomposition.tasks.length)
+
+      // Emit decomposition event
+      this.emitEvent({
+        type: "decomposition_complete",
+        data: JSON.stringify(decomposition.tasks.map((t) => ({ id: t.id, description: t.description, type: t.type }))),
+      })
+
+      // STEP 2: Execute each task
+      console.log("[ORCHESTRATOR] === STEP 2: TASK EXECUTION ===")
+      const taskResults: TaskResult[] = []
+      for (const task of decomposition.tasks) {
+        if (task.type === "synthesis") {
+          console.log("[ORCHESTRATOR] Skipping synthesis task for now, will run last")
+          continue
+        }
+        console.log(`[ORCHESTRATOR] Executing task: ${task.id} (${task.type})`)
+
+        // Emit task start event
+        this.emitEvent({
+          type: "task_started",
+          taskId: task.id,
+          taskDescription: task.description,
+          taskType: task.type,
+        })
+
+        const result = await this.executeTask(task, q)
+        taskResults.push(result)
+
+        // Emit task complete event
+        this.emitEvent({
+          type: "task_complete",
+          taskId: task.id,
+          data: result.result.substring(0, 200),
+        })
+
+        console.log(`[ORCHESTRATOR] Task ${task.id} complete, result length: ${result.result.length}`)
+      }
+
+      // STEP 3: Synthesize results for this question
+      console.log("[ORCHESTRATOR] === STEP 3: SYNTHESIS ===")
+      const answer = await this.synthesizeResults(q, taskResults)
+      allResults.push(answer)
+    }
+
+    // Combine all results if multiple questions
+    let finalAnswer = allResults.length === 1 ? allResults[0] : this.combineResults(userQuestion, allResults)
     console.log("[ORCHESTRATOR] === END processQuestion ===")
 
     // Emit final answer event
@@ -120,6 +145,48 @@ export class AgentOrchestrator {
     })
 
     return finalAnswer
+  }
+  
+  private isLargeReportQuery(question: string): boolean {
+    const reportKeywords = ["excel", "report", "csv", "sales", "inventory", "shipment", "fleet", "financial", "data"]
+    const hasReportKeyword = reportKeywords.some(kw => question.toLowerCase().includes(kw))
+    const isComplex = question.length > 200 || question.split(",").length > 2
+    return hasReportKeyword && isComplex
+  }
+  
+  private async splitReportQuery(userQuestion: string): Promise<string[]> {
+    const reports = [
+      "Sales Report Q3 2026",
+      "Inventory Snapshot",
+      "Shipment Performance",
+      "Fleet Utilization",
+      "Financial Summary"
+    ]
+    
+    const prompt = REPORT_QUERY_SPLITTER_PROMPT(userQuestion, reports)
+    console.log("[ORCHESTRATOR] Splitting large report query")
+    
+    const response = await this.openrouterService.sendMessage(prompt, false)
+    console.log("[ORCHESTRATOR] Split response:", response.substring(0, 200))
+    
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.warn("[ORCHESTRATOR] Failed to parse split response, using original question")
+        return [userQuestion]
+      }
+      
+      const split = JSON.parse(jsonMatch[0])
+      const subQuestions = split.subQuestions?.map((sq: any) => sq.question) || [userQuestion]
+      return subQuestions.slice(0, 3) // Limit to 3 sub-questions
+    } catch (e) {
+      console.warn("[ORCHESTRATOR] Error parsing split response:", e)
+      return [userQuestion]
+    }
+  }
+  
+  private combineResults(originalQuestion: string, results: string[]): string {
+    return `Based on the analysis of multiple data sources:\n\n${results.map((r, i) => `**Part ${i + 1}:**\n${r}`).join("\n\n")}`
   }
 
   private async decomposeQuestion(userQuestion: string): Promise<TaskDecomposition> {

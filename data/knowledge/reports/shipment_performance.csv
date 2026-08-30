@@ -1,0 +1,11 @@
+Shipment ID,Origin,Destination,Carrier,Departure Date,Estimated Arrival,Actual Arrival,Status,Weight (kg),Cost
+SHIP-2026-0847,Port of Rotterdam,Singapore,Global Line,2026-08-15,2026-09-12,2026-09-10,Delivered,2450,4890
+SHIP-2026-0848,Los Angeles,Hong Kong,Pacific Express,2026-08-18,2026-09-01,In Transit,1820,3250
+SHIP-2026-0849,Hamburg,Dubai,Middle East Direct,2026-08-12,2026-08-28,Delivered,3100,5670
+SHIP-2026-0850,Shanghai,Melbourne,Ocean Freight Co,2026-08-20,2026-09-15,In Transit,2680,4120
+SHIP-2026-0851,Bangkok,London,International Routes,2026-08-22,2026-09-18,In Transit,1550,2890
+SHIP-2026-0852,Toronto,Mexico City,North America Express,2026-08-25,2026-09-02,Scheduled,980,1650
+SHIP-2026-0853,Busan,Los Angeles,Pacific Carrier,2026-08-10,2026-08-30,Delayed,2200,3980
+SHIP-2026-0854,Singapore,Rotterdam,Global Ocean,2026-08-14,2026-09-25,In Transit,3500,6450
+SHIP-2026-0855,Sydney,Dubai,Oceania Routes,2026-08-19,2026-09-08,In Transit,1400,2650
+SHIP-2026-0856,Miami,Antwerp,Atlantic Express,2026-08-24,2026-09-05,Scheduled,2100,3750

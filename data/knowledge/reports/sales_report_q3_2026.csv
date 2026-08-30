@@ -1,0 +1,11 @@
+Date,Region,Product,Quantity,Revenue,Status
+2026-07-01,North America,Logistics Suite,150,450000,Completed
+2026-07-05,Europe,Transport Management,200,620000,Completed
+2026-07-10,Asia Pacific,Warehouse Control,120,385000,In Progress
+2026-07-15,Middle East,Fleet Tracking,85,260000,Completed
+2026-07-20,South America,Route Optimization,110,340000,In Progress
+2026-08-01,North America,Integration Services,95,285000,Completed
+2026-08-05,Europe,Consulting,180,540000,Completed
+2026-08-10,Asia Pacific,Support & Maintenance,220,165000,Ongoing
+2026-08-15,Middle East,Training Programs,75,225000,Completed
+2026-08-20,Global,Premium Support Package,300,900000,Ongoing

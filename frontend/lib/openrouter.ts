@@ -76,18 +76,31 @@ export async function sendMessageWithStreaming(
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let finalAnswer = ""
+    let buffer = "" // Buffer for incomplete lines
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
       const chunk = decoder.decode(value, { stream: true })
-      const lines = chunk.split("\n")
-
-      for (const line of lines) {
+      buffer += chunk
+      const lines = buffer.split("\n")
+      
+      // Keep the last line in buffer if it doesn't end with newline (incomplete)
+      buffer = lines[lines.length - 1]
+      
+      // Process all complete lines
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i]
         if (line.startsWith("data: ")) {
           try {
-            const eventData = JSON.parse(line.slice(6)) as TaskEvent
+            const jsonStr = line.slice(6)
+            // Sanitize the JSON string to handle special characters
+            const sanitized = jsonStr
+              .replace(/[\u2013\u2014]/g, "-") // Replace en-dash and em-dash with hyphen
+              .replace(/[\u00A0]/g, " ") // Replace non-breaking space with regular space
+            
+            const eventData = JSON.parse(sanitized) as TaskEvent
             console.log("[API-STREAM] Event:", eventData.type, eventData.taskId || "")
             onTaskEvent(eventData)
 
@@ -95,9 +108,31 @@ export async function sendMessageWithStreaming(
               finalAnswer = eventData.data
             }
           } catch (e) {
-            console.warn("[API-STREAM] Failed to parse event:", line)
+            console.warn("[API-STREAM] Failed to parse event (line", i, "):", line.slice(0, 100))
+            console.warn("[API-STREAM] Parse error:", e instanceof Error ? e.message : "Unknown error")
           }
         }
+      }
+    }
+    
+    // Process any remaining buffered data
+    if (buffer && buffer.startsWith("data: ")) {
+      try {
+        const jsonStr = buffer.slice(6)
+        const sanitized = jsonStr
+          .replace(/[\u2013\u2014]/g, "-")
+          .replace(/[\u00A0]/g, " ")
+        
+        const eventData = JSON.parse(sanitized) as TaskEvent
+        console.log("[API-STREAM] Event (final):", eventData.type, eventData.taskId || "")
+        onTaskEvent(eventData)
+
+        if (eventData.type === "final_answer" && eventData.data) {
+          finalAnswer = eventData.data
+        }
+      } catch (e) {
+        console.warn("[API-STREAM] Failed to parse final event:", buffer.slice(0, 100))
+        console.warn("[API-STREAM] Parse error:", e instanceof Error ? e.message : "Unknown error")
       }
     }
 

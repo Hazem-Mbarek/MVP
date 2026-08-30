@@ -13,7 +13,7 @@ export const toolSchemas = [
     function: {
       name: "search_knowledge",
       description:
-        "Search across FAQ, incoterms, and CMR articles using semantic search. Returns relevant chunks with citations.",
+        "Search across FAQ, incoterms, CMR articles, and operational reports using semantic search. Returns relevant chunks with citations.",
       parameters: {
         type: "object",
         properties: {
@@ -23,8 +23,8 @@ export const toolSchemas = [
           },
           source_filter: {
             type: "string",
-            enum: ["faq", "incoterms", "cmr"],
-            description: "Optional: filter results to a specific source",
+            enum: ["faq", "incoterms", "cmr", "reports"],
+            description: "Optional: filter results to a specific source (faq, incoterms, cmr, or reports)",
           },
           top_k: {
             type: "integer",

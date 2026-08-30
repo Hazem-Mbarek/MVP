@@ -7,6 +7,7 @@ Saves embeddings to JSON for use in Node.js backend
 import json
 import sys
 from pathlib import Path
+import csv
 
 # Import sentence-transformers for semantic embeddings
 from sentence_transformers import SentenceTransformer
@@ -23,6 +24,20 @@ def read_jsonl(filepath):
     except FileNotFoundError:
         print(f"Warning: Could not read {filepath}")
     return records
+
+def read_csv_as_chunks(filepath):
+    """Read CSV file and return list of text chunks"""
+    chunks = []
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Convert row to text for embedding
+                row_text = ", ".join([f"{k}: {v}" for k, v in row.items()])
+                chunks.append(row_text)
+    except FileNotFoundError:
+        print(f"Warning: Could not read {filepath}")
+    return chunks
 
 def generate_embeddings():
     """Generate embeddings for all knowledge sources"""
@@ -85,6 +100,39 @@ def generate_embeddings():
             }
         })
     print(f"[EMBEDDINGS] Processed {len(cmr_records)} CMR records")
+    
+    # Process CSV Reports
+    print("[EMBEDDINGS] Processing CSV Reports...")
+    reports_dir = Path('data/knowledge/reports')
+    csv_files = [
+        'sales_report_q3_2026.csv',
+        'inventory_snapshot.csv',
+        'shipment_performance.csv',
+        'fleet_utilization.csv',
+        'financial_summary.csv',
+    ]
+    
+    total_csv_records = 0
+    for csv_file in csv_files:
+        csv_path = reports_dir / csv_file
+        if csv_path.exists():
+            csv_chunks = read_csv_as_chunks(str(csv_path))
+            for chunk in csv_chunks:
+                vector = model.encode(chunk, normalize_embeddings=True).tolist()
+                chunks.append({
+                    'text': chunk,
+                    'vector': vector,
+                    'metadata': {
+                        'id': f"{csv_file}:{csv_chunks.index(chunk)}",
+                        'source': 'reports',
+                        'report_name': csv_file.replace('.csv', '').replace('_', ' '),
+                        'report_type': 'operational_data',
+                    }
+                })
+            total_csv_records += len(csv_chunks)
+            print(f"[EMBEDDINGS] Processed {len(csv_chunks)} records from {csv_file}")
+    
+    print(f"[EMBEDDINGS] Processed {total_csv_records} total CSV records")
     
     # Save index
     output_path = 'backend/src/knowledge/data/index.json'
