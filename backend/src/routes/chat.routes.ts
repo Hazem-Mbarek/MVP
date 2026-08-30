@@ -7,6 +7,15 @@ const router = Router()
 interface ChatRequest {
   message: string
   clientId?: string
+  clientContact?: {
+    id?: string
+    name: string
+    company: string
+    email: string
+    phone?: string
+    city?: string
+    country?: string
+  }
 }
 
 interface ChatResponse {
@@ -109,41 +118,67 @@ router.post("/stream", async (req: Request<{}, {}, ChatRequest>, res: Response) 
   }
 })
 
-// POST /api/chat/external - External customer agent (proxy to /api/external-chat)
+// POST /api/chat/external - External customer agent
 router.post("/external", async (req: Request<{}, {}, ChatRequest>, res: Response<ChatResponse>) => {
+  const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  
   try {
-    const sessionClientId = req.query.clientId as string || req.headers["x-client-id"] as string
+    console.log(`[CHAT-EXTERNAL] [${requestId}] === INCOMING REQUEST ===`)
+    console.log(`[CHAT-EXTERNAL] [${requestId}] Request body keys: ${Object.keys(req.body).join(", ")}`)
+    
+    // Try to extract client ID from clientContact first (new method)
+    let sessionClientId: string | undefined
+    
+    if (req.body.clientContact) {
+      console.log(`[CHAT-EXTERNAL] [${requestId}] clientContact found in body`)
+      // If ID is provided directly, use it
+      if (req.body.clientContact.id) {
+        sessionClientId = String(req.body.clientContact.id)
+        console.log(`[CHAT-EXTERNAL] [${requestId}] ✓ Using direct client ID: ${sessionClientId}`)
+      }
+    }
+    
+    // Fallback to query params or headers (legacy)
+    if (!sessionClientId) {
+      sessionClientId = req.query.clientId as string || req.headers["x-client-id"] as string
+      if (sessionClientId) {
+        console.log(`[CHAT-EXTERNAL] [${requestId}] Using client ID from query/header: ${sessionClientId}`)
+      }
+    }
 
     if (!sessionClientId) {
+      console.error(`[CHAT-EXTERNAL] [${requestId}] ✗ No client ID found`)
       return res.status(401).json({
         success: false,
-        error: "No client ID in session. Authentication required.",
+        error: "No client ID provided. Please select a client contact.",
       })
     }
 
     const { message } = req.body
 
     if (!message || typeof message !== "string") {
-      console.warn("[CHAT-EXTERNAL] Invalid request: message missing or not a string")
+      console.warn(`[CHAT-EXTERNAL] [${requestId}] ✗ Invalid message`)
       return res.status(400).json({
         success: false,
         error: "Invalid request: message is required and must be a string",
       })
     }
 
-    console.log("[CHAT-EXTERNAL] Processing message:", message.substring(0, 50) + "...")
-    console.log("[CHAT-EXTERNAL] Session client ID:", sessionClientId)
+    console.log(`[CHAT-EXTERNAL] [${requestId}] ✓ Client ID: ${sessionClientId}`)
+    console.log(`[CHAT-EXTERNAL] [${requestId}] Message: "${message}"`)
+    console.log(`[CHAT-EXTERNAL] [${requestId}] → Forwarding to ExternalAgentOrchestrator...`)
 
     const externalOrchestrator = new ExternalAgentOrchestrator(sessionClientId)
     const response = await externalOrchestrator.processQuestion(message.trim())
 
+    console.log(`[CHAT-EXTERNAL] [${requestId}] ✓ Response received: ${response.length} chars`)
     return res.json({
       success: true,
       message: response,
     })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error("[CHAT-EXTERNAL] Error:", errorMessage)
+    console.error(`[CHAT-EXTERNAL] [${requestId}] ✗ Error: ${errorMessage}`)
 
     return res.status(500).json({
       success: false,
@@ -152,30 +187,54 @@ router.post("/external", async (req: Request<{}, {}, ChatRequest>, res: Response
   }
 })
 
-// POST /api/chat/external/stream - External customer agent with streaming (proxy to /api/external-chat/stream)
+// POST /api/chat/external/stream - External customer agent with streaming
 router.post("/external/stream", async (req: Request<{}, {}, ChatRequest>, res: Response) => {
+  const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  
   try {
-    const sessionClientId = req.query.clientId as string || req.headers["x-client-id"] as string
+    console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] === INCOMING REQUEST ===`)
+    console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] Request body keys: ${Object.keys(req.body).join(", ")}`)
+    
+    // Try to extract client ID from clientContact first (new method)
+    let sessionClientId: string | undefined
+    
+    if (req.body.clientContact) {
+      console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] clientContact found in body`)
+      // If ID is provided directly, use it
+      if (req.body.clientContact.id) {
+        sessionClientId = String(req.body.clientContact.id)
+        console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] ✓ Using direct client ID: ${sessionClientId}`)
+      }
+    }
+    
+    // Fallback to query params or headers (legacy)
+    if (!sessionClientId) {
+      sessionClientId = req.query.clientId as string || req.headers["x-client-id"] as string
+      if (sessionClientId) {
+        console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] Using client ID from query/header: ${sessionClientId}`)
+      }
+    }
 
     if (!sessionClientId) {
+      console.error(`[CHAT-EXTERNAL-STREAM] [${requestId}] ✗ No client ID found`)
       return res.status(401).json({
         success: false,
-        error: "No client ID in session. Authentication required.",
+        error: "No client ID provided. Please select a client contact.",
       })
     }
 
     const { message } = req.body
 
     if (!message || typeof message !== "string") {
-      console.warn("[CHAT-EXTERNAL-STREAM] Invalid request: message missing or not a string")
+      console.warn(`[CHAT-EXTERNAL-STREAM] [${requestId}] ✗ Invalid message`)
       return res.status(400).json({
         success: false,
         error: "Invalid request: message is required and must be a string",
       })
     }
 
-    console.log("[CHAT-EXTERNAL-STREAM] Processing message:", message.substring(0, 50) + "...")
-    console.log("[CHAT-EXTERNAL-STREAM] Session client ID:", sessionClientId)
+    console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] ✓ Client ID: ${sessionClientId}`)
+    console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] Message: "${message}"`)
 
     // Set up SSE headers
     res.setHeader("Content-Type", "text/event-stream")
@@ -183,12 +242,13 @@ router.post("/external/stream", async (req: Request<{}, {}, ChatRequest>, res: R
     res.setHeader("Connection", "keep-alive")
     res.setHeader("Access-Control-Allow-Origin", "*")
 
+    console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] → Forwarding to ExternalAgentOrchestrator...`)
     const externalOrchestrator = new ExternalAgentOrchestrator(sessionClientId)
 
     // Register event listener to stream task progress
     externalOrchestrator.addEventListener((event: TaskEvent) => {
       const sseMessage = `data: ${JSON.stringify(event)}\n\n`
-      console.log("[CHAT-EXTERNAL-STREAM] Sending event:", event.type)
+      console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] Sending event: ${event.type}`)
       res.write(sseMessage)
     })
 
@@ -202,11 +262,11 @@ router.post("/external/stream", async (req: Request<{}, {}, ChatRequest>, res: R
     }
     res.write(`data: ${JSON.stringify(finalEvent)}\n\n`)
 
-    console.log("[CHAT-EXTERNAL-STREAM] Closing stream")
+    console.log(`[CHAT-EXTERNAL-STREAM] [${requestId}] ✓ Stream closed`)
     res.end()
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error("[CHAT-EXTERNAL-STREAM] Error:", errorMessage)
+    console.error(`[CHAT-EXTERNAL-STREAM] [${requestId}] ✗ Error: ${errorMessage}`)
 
     const errorEvent: TaskEvent = {
       type: "final_answer",

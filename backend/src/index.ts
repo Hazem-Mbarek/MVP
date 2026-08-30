@@ -46,10 +46,18 @@ console.log(`[SERVER] Configuring CORS for frontend: ${frontendUrl}`)
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests from the configured frontend URL
-      if (!origin || origin === frontendUrl || origin === "http://localhost:3000" || origin === "http://localhost:3001") {
+      // Allow requests from:
+      // 1. The configured frontend URL
+      // 2. Localhost (for local development)
+      // 3. Any Cloudflare tunnel URL (for tunnel development)
+      if (!origin || 
+          origin === frontendUrl || 
+          origin === "http://localhost:3000" || 
+          origin === "http://localhost:3001" ||
+          origin?.includes("trycloudflare.com")) {
         callback(null, true)
       } else {
+        console.warn(`[CORS] Blocking request from origin: ${origin}`)
         callback(new Error("CORS not allowed"))
       }
     },
@@ -67,7 +75,7 @@ app.get("/health", (req, res) => {
 // Routes
 console.log("[SERVER] Registering routes...")
 app.use("/api/chat", chatRoutes)
-app.use("/api/external-chat", externalChatRoutes)
+app.use("/api/chat/external", externalChatRoutes)
 app.use("/api/knowledge", knowledgeRoutes)
 
 // 404 handler

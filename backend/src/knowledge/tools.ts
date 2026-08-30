@@ -216,17 +216,25 @@ export function handleCompareIncoterms(params: {
 
 export async function handleQueryDatabase(params: {
   description: string
-  tables?: string[]
+  tables?: string[] | string
   filters?: Record<string, string | number>
   limit?: number
 }): Promise<any> {
-  const { description, tables = [], filters, limit } = params
+  const { description, tables, filters, limit } = params
   
-  console.log(`[TOOLS] query_database: "${description}" from tables: ${tables.join(", ")}`)
+  // Normalize tables: handle both string and array inputs
+  let normalizedTables: string[] = []
+  if (typeof tables === "string") {
+    normalizedTables = [tables]
+  } else if (Array.isArray(tables)) {
+    normalizedTables = tables
+  }
+  
+  console.log(`[TOOLS] query_database: "${description}" from tables: ${normalizedTables.join(", ")}`)
   
   const result = await queryDatabase({
     description,
-    tables,
+    tables: normalizedTables,
     filters,
     limit: Math.min(limit || 100, 100),
   })

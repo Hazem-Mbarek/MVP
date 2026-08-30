@@ -43,8 +43,17 @@ export interface TaskEvent {
 // Decomposition prompt for external customers
 const DECOMPOSITION_PROMPT = (q: string) =>
   "You are a task decomposition agent for external customers. Analyze the question and break it into discrete steps.\n\n" +
-  "IMPORTANT: Most customer questions should route to FAQ first — it covers services, policies, and company info.\n\n" +
-  "Routing rules (in priority order):\n" +
+  "CRITICAL SECURITY RULE: You are role-playing as a SINGLE customer. You MUST REJECT any request that:\n" +
+  "- Asks for another company's data, shipments, or information\n" +
+  "- Tries to access data about other clients (mention of competitors, other company names, other contact names)\n" +
+  "- Attempts to query system-wide information or employee data\n" +
+  "- Tries to circumvent single-customer access (e.g., 'show all companies', 'list all shipments')\n\n" +
+  "If you detect an unauthorized access attempt, create a SINGLE task with:\n" +
+  "- id: 'access_denied'\n" +
+  "- description: 'Customer attempted to access unauthorized data'\n" +
+  "- type: 'synthesis'\n" +
+  "- toolsNeeded: []\n\n" +
+  "For legitimate questions, route according to these rules (in priority order):\n" +
   EXTERNAL_ROUTING_RULES.order.map((r) => `- ${r}`).join("\n") +
   "\n\nFor each step, identify:\n" +
   "1. What data/knowledge is needed\n" +
@@ -59,11 +68,13 @@ const DECOMPOSITION_PROMPT = (q: string) =>
 export class ExternalAgentOrchestrator {
   private openrouterService: OpenRouterService
   private eventListeners: TaskEventListener[] = []
-  private sessionClientId: string // Session-bound customer identity
+  private sessionClientId: string // Client identity
+  private requestId: string // Unique request identifier for tracing
 
   constructor(sessionClientId: string) {
     this.openrouterService = new OpenRouterService()
     this.sessionClientId = sessionClientId
+    this.requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }
 
   addEventListener(listener: TaskEventListener): void {
@@ -71,76 +82,122 @@ export class ExternalAgentOrchestrator {
   }
 
   private emitEvent(event: TaskEvent): void {
-    console.log("[EXTERNAL-ORCHESTRATOR] Emitting event:", event.type, event.taskId || "")
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Emitting event: ${event.type}${event.taskId ? ` (Task: ${event.taskId})` : ""}`)
     this.eventListeners.forEach((listener) => listener(event))
   }
 
   async processQuestion(userQuestion: string): Promise<string> {
-    console.log(
-      "[EXTERNAL-ORCHESTRATOR] === START processQuestion ===",
-      "SessionClientId:",
-      this.sessionClientId
-    )
-    console.log("[EXTERNAL-ORCHESTRATOR] User question:", userQuestion)
+    const startTime = Date.now()
+    
+    console.log("\n" + "█".repeat(100))
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === START processQuestion ===`)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Client ID: ${this.sessionClientId}`)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] User Input: "${userQuestion}"`)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Input Length: ${userQuestion.length} chars`)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Timestamp: ${new Date().toISOString()}`)
+    console.log("█".repeat(100))
 
-    // STEP 1: Decompose the question
-    console.log("[EXTERNAL-ORCHESTRATOR] === STEP 1: DECOMPOSITION ===")
-    const decomposition = await this.decomposeQuestion(userQuestion)
-    console.log("[EXTERNAL-ORCHESTRATOR] Decomposition complete, tasks:", decomposition.tasks.length)
+    try {
+      // STEP 1: Decompose the question
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === STEP 1: DECOMPOSITION ===`)
+      const decompositionStart = Date.now()
+      const decomposition = await this.decomposeQuestion(userQuestion)
+      const decompositionTime = Date.now() - decompositionStart
+      
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ Tasks Generated: ${decomposition.tasks.length}`)
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Decomposition Time: ${decompositionTime}ms`)
+      
+      decomposition.tasks.forEach((t, i) => {
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]   [TASK ${i + 1}] ID: ${t.id} | Type: ${t.type}`)
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]               Description: ${t.description}`)
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]               Tools: ${t.toolsNeeded.join(", ")}`)
+      })
 
-    this.emitEvent({
-      type: "decomposition_complete",
-      data: JSON.stringify(decomposition.tasks.map((t) => ({ id: t.id, description: t.description, type: t.type }))),
-    })
-
-    // STEP 2: Execute each task
-    console.log("[EXTERNAL-ORCHESTRATOR] === STEP 2: TASK EXECUTION ===")
-    const taskResults: TaskResult[] = []
-    for (const task of decomposition.tasks) {
-      if (task.type === "synthesis") {
-        console.log("[EXTERNAL-ORCHESTRATOR] Skipping synthesis task for now, will run last")
-        continue
+      // Check for access denial
+      const accessDeniedTask = decomposition.tasks.find(t => t.id === 'access_denied')
+      if (accessDeniedTask) {
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✗ ACCESS DENIED: Attempted unauthorized data access`)
+        const denialMessage = "I can only assist with your own company information and shipments. I don't have access to data from other organizations. Is there something else I can help you with?"
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === END processQuestion (ACCESS DENIED) ===`)
+        console.log("█".repeat(100) + "\n")
+        return denialMessage
       }
-      console.log(`[EXTERNAL-ORCHESTRATOR] Executing task: ${task.id} (${task.type})`)
 
       this.emitEvent({
-        type: "task_started",
-        taskId: task.id,
-        taskDescription: task.description,
-        taskType: task.type,
+        type: "decomposition_complete",
+        data: JSON.stringify(decomposition.tasks.map((t) => ({ id: t.id, description: t.description, type: t.type }))),
       })
 
-      const result = await this.executeTask(task, userQuestion)
-      taskResults.push(result)
+      // STEP 2: Execute each task
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === STEP 2: TASK EXECUTION ===`)
+      const taskResults: TaskResult[] = []
+      for (const task of decomposition.tasks) {
+        if (task.type === "synthesis") {
+          console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Skipping synthesis task for now, will run last`)
+          continue
+        }
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] >>> Executing task: ${task.id} (${task.type})`)
+
+        this.emitEvent({
+          type: "task_started",
+          taskId: task.id,
+          taskDescription: task.description,
+          taskType: task.type,
+        })
+
+        const taskStart = Date.now()
+        const result = await this.executeTask(task, userQuestion)
+        const taskTime = Date.now() - taskStart
+        taskResults.push(result)
+
+        this.emitEvent({
+          type: "task_complete",
+          taskId: task.id,
+          data: result.result.substring(0, 200),
+        })
+
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] <<< Task ${task.id} complete (${taskTime}ms)`)
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]     Result length: ${result.result.length} chars`)
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]     Sources used: ${result.sourcesUsed.join(", ")}`)
+      }
+
+      // STEP 3: Synthesize results
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === STEP 3: SYNTHESIS ===`)
+      const synthesisStart = Date.now()
+      const finalAnswer = await this.synthesizeResults(userQuestion, taskResults)
+      const synthesisTime = Date.now() - synthesisStart
+      
+      const totalTime = Date.now() - startTime
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ Final Answer Length: ${finalAnswer.length} chars`)
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Synthesis Time: ${synthesisTime}ms`)
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === END processQuestion ===`)
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ TOTAL TIME: ${totalTime}ms`)
+      console.log("█".repeat(100) + "\n")
 
       this.emitEvent({
-        type: "task_complete",
-        taskId: task.id,
-        data: result.result.substring(0, 200),
+        type: "final_answer",
+        data: finalAnswer,
       })
 
-      console.log(`[EXTERNAL-ORCHESTRATOR] Task ${task.id} complete, result length: ${result.result.length}`)
+      return finalAnswer
+    } catch (error) {
+      const totalTime = Date.now() - startTime
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✗ ERROR OCCURRED`)
+      console.error(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Error: ${errorMessage}`)
+      console.error(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Stack: ${error instanceof Error ? error.stack : "N/A"}`)
+      console.error(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Time before error: ${totalTime}ms`)
+      console.error("█".repeat(100) + "\n")
+      throw error
     }
-
-    // STEP 3: Synthesize results
-    console.log("[EXTERNAL-ORCHESTRATOR] === STEP 3: SYNTHESIS ===")
-    const finalAnswer = await this.synthesizeResults(userQuestion, taskResults)
-    console.log("[EXTERNAL-ORCHESTRATOR] === END processQuestion ===")
-
-    this.emitEvent({
-      type: "final_answer",
-      data: finalAnswer,
-    })
-
-    return finalAnswer
   }
 
   private async decomposeQuestion(userQuestion: string): Promise<TaskDecomposition> {
     const prompt = DECOMPOSITION_PROMPT(userQuestion)
-    console.log("[EXTERNAL-ORCHESTRATOR] Sending decomposition prompt")
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Sending decomposition prompt (${prompt.length} chars)`)
 
     const response = await this.openrouterService.sendMessage(prompt, false)
-    console.log("[EXTERNAL-ORCHESTRATOR] Decomposition response length:", response.length)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ Decomposition response received: ${response.length} chars`)
 
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
@@ -148,6 +205,7 @@ export class ExternalAgentOrchestrator {
     }
 
     const decomposition: TaskDecomposition = JSON.parse(jsonMatch[0])
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ Parsed ${decomposition.tasks.length} tasks`)
     return decomposition
   }
 
@@ -156,7 +214,9 @@ export class ExternalAgentOrchestrator {
 
     // Add session context for database queries
     const sessionContext =
-      task.type === "database" ? `\nSession customer ID: ${this.sessionClientId}\n` : ""
+      task.type === "database" ? `\nClient ID: ${this.sessionClientId}\n` : ""
+
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] [TASK ${task.id}] Building prompt for type: ${task.type}`)
 
     switch (task.type) {
       case "incoterms":
@@ -190,6 +250,7 @@ export class ExternalAgentOrchestrator {
           "\nCustomer question: " +
           originalQuestion +
           "\n\nExecute the task and provide ONLY the result with citations."
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] [TASK ${task.id}] Database query with client ID: ${this.sessionClientId}`)
         break
 
       case "faq":
@@ -216,11 +277,13 @@ export class ExternalAgentOrchestrator {
         throw new Error("Unknown task type: " + task.type)
     }
 
-    console.log(
-      `[EXTERNAL-ORCHESTRATOR] Executing task ${task.id} with focused prompt (${prompt.length} chars)`
-    )
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] [TASK ${task.id}] Prompt size: ${prompt.length} chars`)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] [TASK ${task.id}] Sending to OpenRouter...`)
+    
     // INCLUDE system prompt for task execution to enable tool calling
     const result = await this.openrouterService.sendMessage(prompt, true)
+
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] [TASK ${task.id}] ✓ Result received: ${result.length} chars`)
 
     return {
       taskId: task.id,
@@ -234,6 +297,14 @@ export class ExternalAgentOrchestrator {
     originalQuestion: string,
     taskResults: TaskResult[]
   ): Promise<string> {
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === SYNTHESIS PHASE ===`)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Synthesizing ${taskResults.length} task results`)
+    taskResults.forEach((tr, i) => {
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]   [RESULT ${i + 1}] ${tr.taskDescription}`)
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]               Length: ${tr.result.length} chars`)
+      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]               Sources: ${tr.sourcesUsed.join(", ")}`)
+    })
+
     const taskResultsFormatted = taskResults.map((tr) => tr.result).join("\n\n")
 
     const synthesisRules = getExternalRulesForTask("synthesis")
@@ -253,8 +324,9 @@ export class ExternalAgentOrchestrator {
       "If some information was not found, mention that briefly but don't emphasize it. " +
       "Focus on what was found and what matters for answering the question."
 
-    console.log("[EXTERNAL-ORCHESTRATOR] Sending synthesis prompt")
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Sending synthesis prompt (${prompt.length} chars) to OpenRouter...`)
     const finalAnswer = await this.openrouterService.sendMessage(prompt, false)
+    console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ Synthesis complete: ${finalAnswer.length} chars`)
 
     return finalAnswer
   }
