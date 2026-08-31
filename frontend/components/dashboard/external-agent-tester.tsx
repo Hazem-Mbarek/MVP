@@ -16,6 +16,14 @@ interface Message {
 interface ExternalAgentTesterProps {
   externalMessages: Message[]
   onAddMessage: (msg: Message) => void
+  selectedContact?: {
+    name: string
+    company: string
+    email: string
+    phone: string
+    city: string
+    country: string
+  }
 }
 
 // Throbber/indeterminate progress indicator component
@@ -62,12 +70,15 @@ function ThrobberAnimation() {
   )
 }
 
-export function ExternalAgentTester({ externalMessages, onAddMessage }: ExternalAgentTesterProps) {
+export function ExternalAgentTester({ externalMessages, onAddMessage, selectedContact }: ExternalAgentTesterProps) {
   const [clientInput, setClientInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleClientSend = async () => {
     if (!clientInput.trim()) return
+    
+    console.log("[EXTERNAL-TESTER] Sending message:", clientInput)
+    console.log("[EXTERNAL-TESTER] Selected contact:", selectedContact)
     
     const newMessage: Message = {
       id: Date.now().toString(),
@@ -83,12 +94,17 @@ export function ExternalAgentTester({ externalMessages, onAddMessage }: External
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"
-      // For MVP, use a demo client ID. In production, this would come from auth context
-      const clientId = "15" // Demo customer
-      const response = await fetch(`${backendUrl}/api/chat/external?clientId=${clientId}`, {
+      // Pass client contact details - backend will look up actual client_id from database
+      const requestBody = { 
+        message: userMessage,
+        clientContact: selectedContact,
+      }
+      console.log("[EXTERNAL-TESTER] Request body:", requestBody)
+      
+      const response = await fetch(`${backendUrl}/api/chat/external`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
@@ -124,8 +140,11 @@ export function ExternalAgentTester({ externalMessages, onAddMessage }: External
       <ThrobberAnimation />
       <CardHeader className="shrink-0 border-b border-border p-3">
         <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          Client Conversation
+          Contacts
         </span>
+        <p className="text-[10px] text-muted-foreground italic mt-1">
+          Select a client and simulate their communication with LogHub
+        </p>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
         {/* Messages Display */}

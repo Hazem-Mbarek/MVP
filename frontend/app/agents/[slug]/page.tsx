@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { agents } from "@/lib/mock-data"
+import { useAgentStore } from "@/lib/agent-store"
 import { AgentInfo } from "@/components/dashboard/agent-info"
 import { AgentOutput } from "@/components/dashboard/agent-output"
 import { TerminalLogs } from "@/components/dashboard/terminal-logs"
@@ -35,7 +36,18 @@ export default function AgentPage({ params }: AgentPageProps) {
   const agent = agents[agentIndex]
 
   // ── Shared external agent state ────────────────────────────────
-  const [externalMessages, setExternalMessages] = useState<Message[]>([])
+  const agentStore = useAgentStore()
+  const agentState = agentStore.getAgentState(slug)
+  const externalMessages = agentState.messages
+  const selectedContact = agentState.selectedContact
+
+  const handleAddMessage = useCallback((msg: Message) => {
+    agentStore.addMessage(slug, msg)
+  }, [slug, agentStore])
+
+  const setSelectedContact = (contact: any) => {
+    agentStore.setSelectedContact(slug, contact)
+  }
 
   // ── Global pipeline store ──────────────────────────────────────
   const pipeline = usePipeline()
@@ -152,7 +164,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           className="overflow-y-auto lg:col-span-3"
         >
           {slug === "external" ? (
-            <ShipmentsInbox />
+            <ShipmentsInbox onContactSelect={setSelectedContact} />
           ) : slug === "internal" ? (
             <ChatList />
           ) : slug === "behavior-agent" ? (
@@ -180,9 +192,9 @@ export default function AgentPage({ params }: AgentPageProps) {
           {slug === "risk-behavior-agent" ? (
             <AnalysisOutput agentSlug={slug} onLog={handleLog} onAnalysisComplete={handleAnalysisComplete} pipelineActive={isInPipeline} />
           ) : slug === "external" ? (
-            <ShipmentsChat externalMessages={externalMessages} onAddMessage={(msg) => setExternalMessages(prev => [...prev, msg])} />
+            <ShipmentsChat externalMessages={externalMessages} onAddMessage={handleAddMessage} />
           ) : slug === "internal" ? (
-            <ChatInterface />
+            <ChatInterface agentSlug={slug} />
           ) : slug === "response-agent" ? (
             <ResponseAgentTest />
           ) : (
@@ -199,7 +211,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           className="h-full min-h-[400px] lg:col-span-4"
         >
           {slug === "external" ? (
-            <ExternalAgentTester externalMessages={externalMessages} onAddMessage={(msg) => setExternalMessages(prev => [...prev, msg])} />
+            <ExternalAgentTester externalMessages={externalMessages} onAddMessage={handleAddMessage} selectedContact={selectedContact} />
           ) : (
             <TerminalLogs agentSlug={slug} liveLogs={isLiveAgent && combinedLogs.length > 0 ? combinedLogs : undefined} />
           )}

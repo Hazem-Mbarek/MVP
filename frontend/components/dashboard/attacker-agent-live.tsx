@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Bot, MessageSquare } from "lucide-react"
 import { ChatBar } from "@/components/dashboard/chat-bar"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
+import { useAgentStore } from "@/lib/agent-store"
 
 const chats = [
   { name: "New Chat", preview: "Ask the model a question.", time: "Now", active: true },
@@ -122,14 +123,26 @@ export function ChatList() {
   )
 }
 
-export function ChatInterface() {
-  const [thread, setThread] = useState(starterMessages)
+export function ChatInterface({ agentSlug = "internal" }: { agentSlug?: string }) {
+  const agentStore = useAgentStore()
+  const agentState = agentStore.getAgentState(agentSlug)
+  const thread = agentState.messages.length > 0 ? agentState.messages : starterMessages
+  
   const [loading, setLoading] = useState(false)
   const [taskProgress, setTaskProgress] = useState<string | null>(null)
 
+  const handleAddMessage = useCallback((message: any) => {
+    agentStore.addMessage(agentSlug, {
+      id: Date.now().toString(),
+      text: message.text,
+      sender: message.from === "me" ? "client" : "server",
+      timestamp: new Date(),
+    })
+  }, [agentSlug, agentStore])
+
   const handleSendMessage = async (text: string) => {
     // Add user message immediately
-    setThread((prev) => [...prev, { from: "me", text }])
+    handleAddMessage({ from: "me", text })
     setLoading(true)
     setTaskProgress(null)
 
@@ -153,14 +166,11 @@ export function ChatInterface() {
         }
       })
 
-      setThread((prev) => [...prev, { from: "them", text: response }])
+      handleAddMessage({ from: "them", text: response })
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to get response from AI"
-      setThread((prev) => [
-        ...prev,
-        { from: "them", text: `Error: ${errorMessage}` },
-      ])
+      handleAddMessage({ from: "them", text: `Error: ${errorMessage}` })
     } finally {
       setLoading(false)
       setTaskProgress(null)
@@ -184,17 +194,17 @@ export function ChatInterface() {
       <CardContent className="flex-1 space-y-3 overflow-y-auto p-3">
         {thread.map((message, index) => (
           <div
-            key={index}
-            className={message.from === "me" ? "flex justify-end" : "flex justify-start"}
+            key={message.id || index}
+            className={message.sender === "client" || message.from === "me" ? "flex justify-end" : "flex justify-start"}
           >
             <div
               className={
-                message.from === "me"
+                message.sender === "client" || message.from === "me"
                   ? "max-w-[80%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
                   : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
               }
             >
-              {message.from === "me" ? (
+              {message.sender === "client" || message.from === "me" ? (
                 <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
               ) : (
                 <MarkdownRenderer content={message.text} />
