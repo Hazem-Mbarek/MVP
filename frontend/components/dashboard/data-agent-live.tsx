@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Inbox, Mail } from "lucide-react"
+import { Inbox, Mail, Download } from "lucide-react"
 import { ChatBar } from "@/components/dashboard/chat-bar"
+import { Button } from "@/components/ui/button"
 
 const messages = [
   { from: "them" as const, text: "Can you check the last login spike?" },
@@ -64,13 +65,12 @@ const CLIENT_CONTACTS: ClientContact[] = [
 export function ShipmentsInbox({ onContactSelect }: { onContactSelect?: (contact: ClientContact) => void }) {
   const [selectedContact, setSelectedContact] = useState<ClientContact>(CLIENT_CONTACTS[0])
 
-  // Only call on first mount to initialize the store
   useEffect(() => {
     console.log("[SHIPMENTS-INBOX] Initializing with first contact")
     if (onContactSelect) {
       onContactSelect(CLIENT_CONTACTS[0])
     }
-  }, []) // Empty dependency array - only run once on mount
+  }, [])
 
   const handleContactSelect = (contact: ClientContact) => {
     setSelectedContact(contact)
@@ -88,7 +88,6 @@ export function ShipmentsInbox({ onContactSelect }: { onContactSelect?: (contact
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto p-3 space-y-2">
-        {/* Contact Cards Section */}
         {CLIENT_CONTACTS.map((contact) => (
           <div
             key={contact.id}
@@ -119,14 +118,107 @@ export function ShipmentsInbox({ onContactSelect }: { onContactSelect?: (contact
   )
 }
 
-export function ShipmentsChat({ externalMessages, onAddMessage }: { externalMessages?: any[], onAddMessage?: (msg: any) => void }) {
-  const [thread, setThread] = useState(messages)
+function MessageBubble({ message, messageId, selectedContact, onDownload }: { message: any; messageId: string; selectedContact: ClientContact | null; onDownload: (id: string, text: string) => void }) {
+  const isFromMe = message.from === "me" || message.sender === "client"
+  const [downloading, setDownloading] = useState(false)
 
-  // Use external messages if provided, otherwise use local state
-  const displayMessages = externalMessages !== undefined ? externalMessages : thread
+  return (
+    <div className={isFromMe ? "flex justify-end" : "flex justify-start"}>
+      <div className="flex flex-col gap-1.5">
+        <div
+          className={
+            isFromMe
+              ? "max-w-[80%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
+              : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
+          }
+        >
+          <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
+        </div>
+
+        {!isFromMe && (
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground transition-all duration-200 animate-in fade-in-50 slide-in-from-bottom-1"
+              onClick={() => {
+                setDownloading(true)
+                onDownload(messageId, message.text)
+                setTimeout(() => setDownloading(false), 1000)
+              }}
+              disabled={downloading}
+            >
+              <Download className={`h-3 w-3 transition-transform duration-300 ${downloading ? "animate-bounce" : ""}`} />
+              {downloading ? "Downloading..." : "Download PDF"}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function ShipmentsChat({ externalMessages, onAddMessage, selectedContact }: { externalMessages?: any[], onAddMessage?: (msg: any) => void, selectedContact?: ClientContact | null }) {
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  const displayMessages = externalMessages !== undefined ? externalMessages : messages
   const addMessage = onAddMessage
     ? (msg: any) => onAddMessage(msg)
-    : (msg: any) => setThread((prev) => [...prev, msg])
+    : (msg: any) => {}
+
+  const handleDownload = async (messageId: string, messageText: string) => {
+    if (!selectedContact) {
+      alert("Please select a client contact to download")
+      return
+    }
+
+    setDownloading(messageId)
+    try {
+      console.log("[SHIPMENTS-CHAT] Downloading message as PDF")
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"
+      
+      const response = await fetch(`${backendUrl}/api/chat/external/download`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: messageText,
+          clientContact: selectedContact,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to generate PDF")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      
+      const timestamp = new Date().toISOString().slice(0, 10)
+      const sanitized = selectedContact.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "")
+      link.download = `${sanitized}_statement_${timestamp}.pdf`
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      console.log("[SHIPMENTS-CHAT] ✓ Download complete")
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      console.error("[SHIPMENTS-CHAT] ✗ Download failed:", errorMessage)
+      alert(`Download failed: ${errorMessage}`)
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
@@ -142,26 +234,15 @@ export function ShipmentsChat({ externalMessages, onAddMessage }: { externalMess
         </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-3 overflow-y-auto p-3">
-        {displayMessages.map((message, index) => {
-          // Handle both old format (from: "me"/"them") and new format (sender: "client"/"server")
-          const isFromMe = message.from === "me" || message.sender === "client"
-          return (
-            <div
-              key={message.id || index}
-              className={isFromMe ? "flex justify-end" : "flex justify-start"}
-            >
-              <div
-                className={
-                  isFromMe
-                    ? "max-w-[80%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
-                    : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
-                }
-              >
-                <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
-              </div>
-            </div>
-          )
-        })}
+        {displayMessages.map((message, index) => (
+          <MessageBubble
+            key={message.id || index}
+            message={message}
+            messageId={message.id || `msg-${index}`}
+            selectedContact={selectedContact || null}
+            onDownload={handleDownload}
+          />
+        ))}
       </CardContent>
       <ChatBar
         placeholder="Write a message..."

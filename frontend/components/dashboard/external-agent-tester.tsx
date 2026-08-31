@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 
 interface Message {
@@ -17,6 +18,7 @@ interface ExternalAgentTesterProps {
   externalMessages: Message[]
   onAddMessage: (msg: Message) => void
   selectedContact?: {
+    id?: string
     name: string
     company: string
     email: string
@@ -73,6 +75,7 @@ function ThrobberAnimation() {
 export function ExternalAgentTester({ externalMessages, onAddMessage, selectedContact }: ExternalAgentTesterProps) {
   const [clientInput, setClientInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [downloading, setDownloading] = useState<string | null>(null)
 
   const handleClientSend = async () => {
     if (!clientInput.trim()) return
@@ -135,6 +138,60 @@ export function ExternalAgentTester({ externalMessages, onAddMessage, selectedCo
     }
   }
 
+  const handleDownload = async (messageId: string, messageText: string) => {
+    if (!selectedContact) {
+      alert("Please select a client contact to download")
+      return
+    }
+
+    setDownloading(messageId)
+    try {
+      console.log("[EXTERNAL-TESTER] Downloading message as PDF")
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"
+      
+      const response = await fetch(`${backendUrl}/api/chat/external/download`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: messageText,
+          clientContact: selectedContact,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to generate PDF")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      
+      const timestamp = new Date().toISOString().slice(0, 10)
+      const sanitized = selectedContact.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "")
+      link.download = `${sanitized}_statement_${timestamp}.pdf`
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      console.log("[EXTERNAL-TESTER] ✓ Download complete")
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      console.error("[EXTERNAL-TESTER] ✗ Download failed:", errorMessage)
+      alert(`Download failed: ${errorMessage}`)
+    } finally {
+      setDownloading(null)
+    }
+  }
+
   return (
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
       <ThrobberAnimation />
@@ -159,23 +216,40 @@ export function ExternalAgentTester({ externalMessages, onAddMessage, selectedCo
                 key={msg.id}
                 className={msg.sender === "client" ? "flex justify-end" : "flex justify-start"}
               >
-                <div
-                  className={
-                    msg.sender === "client"
-                      ? "max-w-[70%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
-                      : "max-w-[70%] rounded border border-border bg-muted/30 px-3 py-2"
-                  }
-                >
-                  <div className="text-xs">
-                    {msg.sender === "client" ? (
-                      <p className="text-foreground">{msg.text}</p>
-                    ) : (
-                      <MarkdownRenderer content={msg.text} />
-                    )}
+                <div className="flex flex-col gap-1.5">
+                  <div
+                    className={
+                      msg.sender === "client"
+                        ? "max-w-[70%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
+                        : "max-w-[70%] rounded border border-border bg-muted/30 px-3 py-2"
+                    }
+                  >
+                    <div className="text-xs">
+                      {msg.sender === "client" ? (
+                        <p className="text-foreground">{msg.text}</p>
+                      ) : (
+                        <MarkdownRenderer content={msg.text} />
+                      )}
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1">
+                      {msg.timestamp.toLocaleTimeString()}
+                    </p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
-                    {msg.timestamp.toLocaleTimeString()}
-                  </p>
+
+                  {msg.sender === "server" && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground transition-all duration-200 animate-in fade-in-50 slide-in-from-bottom-1"
+                        onClick={() => handleDownload(msg.id, msg.text)}
+                        disabled={downloading === msg.id}
+                      >
+                        <Download className={`h-3 w-3 transition-transform duration-300 ${downloading === msg.id ? "animate-bounce" : ""}`} />
+                        {downloading === msg.id ? "Downloading..." : "Download PDF"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))

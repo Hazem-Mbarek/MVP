@@ -192,7 +192,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           {slug === "risk-behavior-agent" ? (
             <AnalysisOutput agentSlug={slug} onLog={handleLog} onAnalysisComplete={handleAnalysisComplete} pipelineActive={isInPipeline} />
           ) : slug === "external" ? (
-            <ShipmentsChat externalMessages={externalMessages} onAddMessage={handleAddMessage} />
+            <ShipmentsChat externalMessages={externalMessages} onAddMessage={handleAddMessage} selectedContact={selectedContact} />
           ) : slug === "internal" ? (
             <ChatInterface agentSlug={slug} />
           ) : slug === "response-agent" ? (
