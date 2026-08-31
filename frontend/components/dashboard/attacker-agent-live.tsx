@@ -191,24 +191,29 @@ export function ChatInterface({ agentSlug = "internal" }: { agentSlug?: string }
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 space-y-3 overflow-y-auto p-3">
+      <CardContent className="flex-1 overflow-y-auto p-3">
         {thread.map((message, index) => (
           <div
             key={message.id || index}
-            className={message.sender === "client" || message.from === "me" ? "flex justify-end" : "flex justify-start"}
+            className="flex w-full mb-3"
           >
             <div
-              className={
-                message.sender === "client" || message.from === "me"
-                  ? "max-w-[80%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
-                  : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
-              }
+              className={message.sender === "client" || message.from === "me" ? "ml-auto" : "mr-auto"}
+              style={{maxWidth: "70%"}}
             >
-              {message.sender === "client" || message.from === "me" ? (
-                <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
-              ) : (
-                <MarkdownRenderer content={message.text} />
-              )}
+              <div
+                className={
+                  message.sender === "client" || message.from === "me"
+                    ? "rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2"
+                    : "rounded-lg border border-border bg-muted/30 px-3 py-2"
+                }
+              >
+                {message.sender === "client" || message.from === "me" ? (
+                  <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
+                ) : (
+                  <MarkdownRenderer content={message.text} />
+                )}
+              </div>
             </div>
           </div>
         ))}

@@ -7,6 +7,52 @@ import { Inbox, Mail, Download } from "lucide-react"
 import { ChatBar } from "@/components/dashboard/chat-bar"
 import { Button } from "@/components/ui/button"
 
+/**
+ * Detect if message is financial/statement data that should be downloadable
+ * Looks for keywords indicating financial data: statement, pricing, costs, jobs, shipments, invoice, etc.
+ */
+function isFinancialStatement(text: string): boolean {
+  if (!text) return false
+  
+  const financialKeywords = [
+    "statement of account",
+    "statement",
+    "job_code",
+    "job code",
+    "nr job",
+    "shipment",
+    "pricing",
+    "price",
+    "currency",
+    "eur",
+    "€",
+    "invoice",
+    "billing",
+    "costs",
+    "charge",
+    "total",
+    "payment",
+    "account",
+    "financial",
+    "cargo",
+    "origin",
+    "destination",
+    "departure",
+    "arrival",
+    "weight",
+  ]
+  
+  const lowerText = text.toLowerCase()
+  
+  // Check if text contains statement/account keywords
+  const hasAccountKeywords = financialKeywords.some(keyword => lowerText.includes(keyword))
+  
+  // Must have at least 2 financial indicators to be considered a statement
+  const indicatorCount = financialKeywords.filter(keyword => lowerText.includes(keyword)).length
+  
+  return hasAccountKeywords && indicatorCount >= 2
+}
+
 const messages = [
   { from: "them" as const, text: "Can you check the last login spike?" },
   { from: "me" as const, text: "Looking at the session now." },
@@ -123,20 +169,23 @@ function MessageBubble({ message, messageId, selectedContact, onDownload }: { me
   const [downloading, setDownloading] = useState(false)
 
   return (
-    <div className={isFromMe ? "flex justify-end" : "flex justify-start"}>
-      <div className="flex flex-col gap-1.5">
+    <div className="flex w-full mb-3">
+      <div
+        className={isFromMe ? "ml-auto" : "mr-auto"}
+        style={{maxWidth: "70%"}}
+      >
         <div
           className={
             isFromMe
-              ? "max-w-[80%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
-              : "max-w-[80%] rounded border border-border bg-muted/30 px-3 py-2"
+              ? "rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2"
+              : "rounded-lg border border-border bg-muted/30 px-3 py-2"
           }
         >
           <p className="text-xs leading-relaxed text-foreground">{message.text}</p>
         </div>
 
-        {!isFromMe && (
-          <div className="flex items-center gap-1">
+        {!isFromMe && isFinancialStatement(message.text) && (
+          <div className="flex items-center gap-1 mt-1">
             <Button
               size="sm"
               variant="ghost"

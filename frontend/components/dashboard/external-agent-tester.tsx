@@ -4,8 +4,55 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { Download, MessageSquare, Form } from "lucide-react"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
+import { JobRequestForm } from "./job-request-form"
+
+/**
+ * Detect if message is financial/statement data that should be downloadable
+ * Looks for keywords indicating financial data: statement, pricing, costs, jobs, shipments, invoice, etc.
+ */
+function isFinancialStatement(text: string): boolean {
+  if (!text) return false
+  
+  const financialKeywords = [
+    "statement of account",
+    "statement",
+    "job_code",
+    "job code",
+    "nr job",
+    "shipment",
+    "pricing",
+    "price",
+    "currency",
+    "eur",
+    "€",
+    "invoice",
+    "billing",
+    "costs",
+    "charge",
+    "total",
+    "payment",
+    "account",
+    "financial",
+    "cargo",
+    "origin",
+    "destination",
+    "departure",
+    "arrival",
+    "weight",
+  ]
+  
+  const lowerText = text.toLowerCase()
+  
+  // Check if text contains statement/account keywords
+  const hasAccountKeywords = financialKeywords.some(keyword => lowerText.includes(keyword))
+  
+  // Must have at least 2 financial indicators to be considered a statement
+  const indicatorCount = financialKeywords.filter(keyword => lowerText.includes(keyword)).length
+  
+  return hasAccountKeywords && indicatorCount >= 2
+}
 
 interface Message {
   id: string
@@ -76,6 +123,7 @@ export function ExternalAgentTester({ externalMessages, onAddMessage, selectedCo
   const [clientInput, setClientInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [showJobForm, setShowJobForm] = useState(false)
 
   const handleClientSend = async () => {
     if (!clientInput.trim()) return
@@ -196,16 +244,53 @@ export function ExternalAgentTester({ externalMessages, onAddMessage, selectedCo
     <Card className="flex h-full flex-col overflow-hidden rounded border-border">
       <ThrobberAnimation />
       <CardHeader className="shrink-0 border-b border-border p-3">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          Contacts
-        </span>
-        <p className="text-[10px] text-muted-foreground italic mt-1">
-          Select a client and simulate their communication with LogHub
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Client Communication
+            </span>
+            <p className="text-[10px] text-muted-foreground italic mt-1">
+              Simulate client shipment requests and inquiries
+            </p>
+          </div>
+          {!showJobForm && (
+            <Button
+              onClick={() => setShowJobForm(true)}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              disabled={isLoading}
+            >
+              <Form className="h-3 w-3 mr-1" />
+              New Request
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
-        {/* Messages Display */}
-        <div className="flex-1 space-y-3 overflow-y-auto p-3">
+        {showJobForm ? (
+          <div className="flex-1 overflow-y-auto p-3">
+            <JobRequestForm
+              selectedContact={selectedContact}
+              onSubmit={(message) => {
+                setClientInput(message)
+                setShowJobForm(false)
+              }}
+              isLoading={isLoading}
+            />
+            <Button
+              onClick={() => setShowJobForm(false)}
+              variant="ghost"
+              size="sm"
+              className="text-xs mt-3"
+            >
+              Back to Chat
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Messages Display */}
+            <div className="flex-1 overflow-y-auto p-3">
           {externalMessages.length === 0 ? (
             <p className="font-mono text-xs text-muted-foreground text-center py-8">
               Conversation starts here.
@@ -214,14 +299,17 @@ export function ExternalAgentTester({ externalMessages, onAddMessage, selectedCo
             externalMessages.map((msg) => (
               <div
                 key={msg.id}
-                className={msg.sender === "client" ? "flex justify-end" : "flex justify-start"}
+                className="flex w-full mb-3"
               >
-                <div className="flex flex-col gap-1.5">
+                <div
+                  className={msg.sender === "client" ? "ml-auto" : "mr-auto"}
+                  style={{maxWidth: "70%"}}
+                >
                   <div
                     className={
                       msg.sender === "client"
-                        ? "max-w-[70%] rounded border border-blue-500/30 bg-blue-500/10 px-3 py-2"
-                        : "max-w-[70%] rounded border border-border bg-muted/30 px-3 py-2"
+                        ? "rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2"
+                        : "rounded-lg border border-border bg-muted/30 px-3 py-2"
                     }
                   >
                     <div className="text-xs">
@@ -236,8 +324,8 @@ export function ExternalAgentTester({ externalMessages, onAddMessage, selectedCo
                     </p>
                   </div>
 
-                  {msg.sender === "server" && (
-                    <div className="flex items-center gap-1">
+                  {msg.sender === "server" && isFinancialStatement(msg.text) && (
+                    <div className="flex items-center gap-1 mt-1">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -291,6 +379,8 @@ export function ExternalAgentTester({ externalMessages, onAddMessage, selectedCo
             </Button>
           </div>
         </div>
+          </>
+        )}
       </CardContent>
     </Card>
   )
