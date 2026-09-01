@@ -5,6 +5,8 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Check, X, Mail } from "lucide-react"
 
 interface ProcessOutputProps {
   processName: string
@@ -12,6 +14,23 @@ interface ProcessOutputProps {
 
 // Mock process results
 const processResults: Record<string, { status: string; summary: string; result: Record<string, unknown>; details: string }> = {
+  "Job Request JOB-2026-1101-001": {
+    status: "Awaiting Confirmation",
+    summary: "Office relocation shipment from Leipzig, Germany to Warsaw, Poland. 3,200 kg of office furniture and equipment requiring International Moving service. Transit: 4 days (Nov 1-5, 2026).",
+    result: {
+      origin: "Leipzig, Germany",
+      destination: "Warsaw, Poland",
+      cargo_type: "Office furniture and equipment",
+      contents: "Desks, chairs, filing cabinets, office supplies",
+      weight_kg: "3,200 kg",
+      service: "International Moving",
+      departure_date: "2026-11-01",
+      arrival_date: "2026-11-05",
+      transit_days: "4 days",
+      validation_status: "✓ Valid",
+    },
+    details: "Client submitted shipment request via job form. All required fields validated:\n\n✓ Origin/destination countries recognized\n✓ Service type available in destination\n✓ Weight within limits (< 50,000 kg)\n✓ Transit time reasonable (4 days)\n✓ Dates are valid and in future\n\nReady for employee confirmation. Next steps: Review shipment details, confirm route availability, reserve transport capacity, and generate quote for client.",
+  },
   "Downtown Office Relocation": {
     status: "In Progress",
     summary: "Relocating executive offices to downtown campus. 2,500 sq ft office space with 45 employees. Currently in loading phase with 3 trucks en route.",
@@ -50,7 +69,25 @@ const processResults: Record<string, { status: string; summary: string; result: 
 
 export function ProcessOutput({ processName }: ProcessOutputProps) {
   const [activeTab, setActiveTab] = useState("summary")
+  const [actionTaken, setActionTaken] = useState<"confirmed" | "rejected" | "contacted" | null>(null)
   const data = processResults[processName]
+
+  const isJobRequest = processName.startsWith("Job Request")
+
+  const handleConfirm = () => {
+    setActionTaken("confirmed")
+    console.log(`[PROCESS] Confirmed: ${processName}`)
+  }
+
+  const handleReject = () => {
+    setActionTaken("rejected")
+    console.log(`[PROCESS] Rejected: ${processName}`)
+  }
+
+  const handleContact = () => {
+    setActionTaken("contacted")
+    console.log(`[PROCESS] Contacted client: ${processName}`)
+  }
 
   if (!data) {
     return (
@@ -61,6 +98,7 @@ export function ProcessOutput({ processName }: ProcessOutputProps) {
       </Card>
     )
   }
+
 
   const resultEntries = Object.entries(data.result)
 
@@ -76,13 +114,14 @@ export function ProcessOutput({ processName }: ProcessOutputProps) {
             data.status === "Complete" && "border-emerald-500/30 bg-emerald-500/10 text-emerald-600",
             data.status === "Running" && "border-blue-500/30 bg-blue-500/10 text-blue-600",
             data.status === "Pending" && "border-amber-500/30 bg-amber-500/10 text-amber-600",
+            data.status === "Awaiting Confirmation" && "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 font-semibold",
           )}>
             {data.status}
           </span>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-hidden p-0">
+      <CardContent className="flex-1 overflow-hidden p-0 flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
           <TabsList className="mx-3 mt-3 h-7 w-fit shrink-0 rounded border border-border bg-muted/50 p-0.5">
             <TabsTrigger value="summary" className="h-6 rounded px-2 font-mono text-[10px] uppercase tracking-wider">
@@ -123,7 +162,7 @@ export function ProcessOutput({ processName }: ProcessOutputProps) {
                 animate={{ opacity: 1 }}
                 className="space-y-2"
               >
-                {resultEntries.map(([key, value]) => (
+                {Object.entries(data.result).map(([key, value]) => (
                   <div key={key} className="rounded border border-border bg-card p-2">
                     <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
                       {key.replace(/_/g, " ")}
@@ -142,13 +181,64 @@ export function ProcessOutput({ processName }: ProcessOutputProps) {
                 animate={{ opacity: 1 }}
                 className="rounded border border-border bg-muted/30 p-3"
               >
-                <p className="text-xs leading-relaxed text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
                   {data.details}
                 </p>
               </motion.div>
             </TabsContent>
           </div>
         </Tabs>
+
+        {/* Action Buttons - Show for job requests */}
+        {isJobRequest && (
+          <div className="shrink-0 border-t border-border p-3 space-y-2">
+            {actionTaken ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "rounded border p-2 text-xs font-medium text-center uppercase tracking-wider",
+                  actionTaken === "confirmed" && "border-emerald-500/30 bg-emerald-500/10 text-emerald-600",
+                  actionTaken === "rejected" && "border-red-500/30 bg-red-500/10 text-red-600",
+                  actionTaken === "contacted" && "border-blue-500/30 bg-blue-500/10 text-blue-600",
+                )}
+              >
+                {actionTaken === "confirmed" && "✓ Shipment confirmed"}
+                {actionTaken === "rejected" && "✗ Shipment rejected"}
+                {actionTaken === "contacted" && "✉ Client contacted"}
+              </motion.div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  onClick={handleConfirm}
+                  size="sm"
+                  className="h-8 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[10px] gap-1"
+                >
+                  <Check className="h-3 w-3" />
+                  Confirm
+                </Button>
+                <Button
+                  onClick={handleReject}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded border-red-500/30 hover:bg-red-500/10 font-mono text-[10px] gap-1 text-red-600"
+                >
+                  <X className="h-3 w-3" />
+                  Reject
+                </Button>
+                <Button
+                  onClick={handleContact}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded border-blue-500/30 hover:bg-blue-500/10 font-mono text-[10px] gap-1 text-blue-600"
+                >
+                  <Mail className="h-3 w-3" />
+                  Contact
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

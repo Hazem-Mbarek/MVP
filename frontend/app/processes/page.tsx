@@ -12,9 +12,33 @@ import { TerminalLogs } from "@/components/dashboard/terminal-logs"
 
 const processes = [
   {
+    name: "Job Request JOB-2026-1101-001",
+    status: "Awaiting Confirmation",
+    active: true,
+    type: "job_request",
+    shipment: {
+      origin: "Leipzig, Germany",
+      destination: "Warsaw, Poland",
+      shipmentType: "Office furniture and equipment",
+      contentDescription: "Desks, chairs, filing cabinets, and office supplies",
+      weight: "3,200 kg",
+      service: "International Moving",
+      departure: "2026-11-01",
+      arrival: "2026-11-05",
+      transitDays: 4,
+    },
+    actions: [
+      "Validate shipment details",
+      "Confirm route availability",
+      "Reserve transport capacity",
+      "Generate quote",
+      "Await employee confirmation",
+    ],
+  },
+  {
     name: "Downtown Office Relocation",
     status: "In Progress",
-    active: true,
+    active: false,
     actions: ["Packing completed", "Loading in progress", "En route to destination"],
   },
   {
@@ -49,16 +73,35 @@ function InteractiveProcessList({ selectedProcess, onSelectProcess }: { selected
             onClick={() => onSelectProcess(item.name)}
             className={
               item.name === selectedProcess
-                ? "w-full border-b border-border border-l-2 border-l-blue-500 bg-blue-500/10 px-3 py-3 text-left transition-colors hover:bg-blue-500/15"
+                ? "w-full border-b border-border border-l-2 border-l-emerald-500 bg-emerald-500/10 px-3 py-3 text-left transition-colors hover:bg-emerald-500/15"
                 : "w-full border-b border-border px-3 py-3 text-left transition-colors hover:bg-muted/50"
             }
           >
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-medium text-foreground">{item.name}</span>
-              <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+              <span className={`shrink-0 font-mono text-[9px] uppercase tracking-wider ${
+                item.status === "Awaiting Confirmation" ? "text-emerald-600 font-semibold" :
+                item.status === "In Progress" ? "text-blue-600" :
+                item.status === "Scheduled" ? "text-orange-600" :
+                item.status === "Delivered" ? "text-emerald-600" :
+                "text-muted-foreground"
+              }`}>
                 {item.status}
               </span>
             </div>
+
+            {/* Show shipment preview if job request */}
+            {item.shipment && (
+              <div className="mt-2 space-y-1 rounded border border-emerald-500/20 bg-emerald-500/5 p-2 text-[9px]">
+                <p className="text-foreground font-medium">
+                  {item.shipment.origin} → {item.shipment.destination}
+                </p>
+                <p className="text-muted-foreground">
+                  {item.shipment.weight} • {item.shipment.service}
+                </p>
+              </div>
+            )}
+
             <div className="mt-2 space-y-1">
               {item.actions.map((action) => (
                 <p
