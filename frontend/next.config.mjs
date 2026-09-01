@@ -7,7 +7,8 @@ const nextConfig = {
     unoptimized: true,
   },
   // Allow all origins for dev resources (temporary demo setup)
-  allowedDevOrigins: ['fate-floppy-somerset-enrolled.trycloudflare.com', 'reason-discounted-elliott-wilson.trycloudflare.com'],
+  allowedDevOrigins: ['barcelona-inbox-blvd-weapon.trycloudflare.com', 'customs-words-handbags-articles.trycloudflare.com'],
 }
 
 export default nextConfig
+

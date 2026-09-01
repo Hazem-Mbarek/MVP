@@ -5,6 +5,7 @@
 import { searchKnowledge } from "./search"
 import { checkTransportCompatibility, compareIncoterms } from "./yaml-tools"
 import { queryDatabase } from "./database-tools"
+import { validateJobRequest } from "./job-validation"
 
 // Tool schemas in OpenAI format
 export const toolSchemas = [
@@ -113,6 +114,87 @@ export const toolSchemas = [
           },
         },
         required: ["description", "tables"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "validate_job_request",
+      description:
+        "Validate a customer's shipment request for feasibility and availability. Checks route availability, service availability, dates, weight, and required fields. Returns detailed validation result with recommendations.",
+      parameters: {
+        type: "object",
+        properties: {
+          origin_city: {
+            type: "string",
+            description: "Pickup city name",
+          },
+          origin_country: {
+            type: "string",
+            description: "Pickup country name",
+          },
+          destination_city: {
+            type: "string",
+            description: "Delivery city name",
+          },
+          destination_country: {
+            type: "string",
+            description: "Delivery country name",
+          },
+          shipment_type: {
+            type: "string",
+            description: "Type of cargo (e.g., 'General freight', 'Palletized goods', 'Building materials', 'Moving')",
+          },
+          content_description: {
+            type: "string",
+            description: "Detailed description of what's being shipped",
+          },
+          weight_kg: {
+            type: "number",
+            description: "Total shipment weight in kilograms",
+          },
+          volume_m3: {
+            type: "number",
+            description: "Cargo volume in cubic meters (optional)",
+          },
+          service_type: {
+            type: "string",
+            description: "Requested service type (e.g., 'FTL', 'LTL', 'Moving', 'Express', 'Groupage')",
+          },
+          departure_date: {
+            type: "string",
+            description: "Scheduled departure date (ISO format: YYYY-MM-DD)",
+          },
+          arrival_date: {
+            type: "string",
+            description: "Expected arrival date (ISO format: YYYY-MM-DD)",
+          },
+          temperature_controlled: {
+            type: "boolean",
+            description: "Whether temperature-controlled transport is needed",
+          },
+          adr_capable: {
+            type: "boolean",
+            description: "Whether shipment requires hazardous goods handling",
+          },
+          special_requirements: {
+            type: "string",
+            description: "Any special handling requirements",
+          },
+        },
+        required: [
+          "origin_city",
+          "origin_country",
+          "destination_city",
+          "destination_country",
+          "shipment_type",
+          "content_description",
+          "weight_kg",
+          "service_type",
+          "departure_date",
+          "arrival_date",
+        ],
       },
     },
   },
@@ -246,5 +328,45 @@ export async function handleQueryDatabase(params: {
     row_count: result.row_count,
     data: result.data,
     source: "loghub.db",
+  }
+}
+
+export async function handleValidateJobRequest(params: {
+  origin_city?: string
+  origin_country?: string
+  destination_city?: string
+  destination_country?: string
+  shipment_type?: string
+  content_description?: string
+  weight_kg?: number
+  volume_m3?: number
+  service_type?: string
+  departure_date?: string
+  arrival_date?: string
+  temperature_controlled?: boolean
+  adr_capable?: boolean
+  special_requirements?: string
+}): Promise<any> {
+  console.log(`[TOOLS] validate_job_request: ${params.origin_city} → ${params.destination_city}`)
+  
+  try {
+    const result = await validateJobRequest(params)
+    
+    return {
+      status: result.status,
+      valid: result.valid,
+      message: result.message,
+      missingFields: result.missingFields,
+      issues: result.issues,
+      available_services: result.available_services,
+      estimated_details: result.estimated_details,
+    }
+  } catch (error) {
+    console.error("[TOOLS] validate_job_request error:", error)
+    return {
+      status: "error",
+      valid: false,
+      message: `Job validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    }
   }
 }

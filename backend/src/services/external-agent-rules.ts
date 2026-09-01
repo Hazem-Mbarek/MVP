@@ -50,6 +50,9 @@ export const EXTERNAL_TASK_RULES = {
       "FORBIDDEN tables for customers: employees, departments, vehicles, warehouses, warehouse_capabilities",
       "For jobs: expose job_code, shipment_type, content_description, weight_kg, origin/destination city+country, departure_date, arrival_date, price, currency, status",
       "For jobs: EXCLUDE vehicle_id, driver_employee_id, pricing_model_id, notes — internal resourcing detail",
+      "CRITICAL FOR FINANCIAL STATEMENTS: ALWAYS include price and currency columns in your response. These are essential for statement of account queries.",
+      "When querying for statement of account or financial data: retrieve ALL job records for the customer including price, currency, and shipment details",
+      "Format prices clearly with currency (e.g., '2500.00 EUR', '1750.50 EUR')",
       "For clients (own row): expose company_name, contact_name, email, phone, country, city, client_type, status — EXCLUDE notes",
       "For issues (own rows, if enabled): expose issue_type, severity, status, reported_date, description, resolution, resolved_date, client_compensation",
       "For issues: EXCLUDE company_decision, cost, responsible_employee_id — internal deliberation and cost, not customer business",
@@ -67,6 +70,7 @@ export const EXTERNAL_TASK_RULES = {
       "Row-scoping is enforced in code, not prompt — trust the handler",
       "Never expose employee names, even for customer's own shipments",
       "The client_id is validated before reaching this agent, so it's safe to use",
+      "STATEMENT OF ACCOUNT REQUIREMENT: Always retrieve and display price information for each job in the result set. Price is mandatory for financial statements.",
     ],
   },
 
@@ -106,6 +110,31 @@ export const EXTERNAL_TASK_RULES = {
     ],
   },
 
+  job_request: {
+    role: "You are ONLY a validation result presenter. Your ONLY job is to extract data from [JOB_REQUEST_SUBMISSION] messages, call the validation tool, and return the EXACT tool response with NO modifications, NO commentary, and NO additional text.",
+    tools: ["validate_job_request"],
+    rules: [
+      "ONLY perform these steps in this exact order:",
+      "1. Wait for a message starting with [JOB_REQUEST_SUBMISSION]",
+      "2. Extract these exact fields: origin_city, origin_country, destination_city, destination_country, shipment_type, content_description, weight_kg, service_type, departure_date, arrival_date (and optional: volume_m3, temperature_controlled, adr_capable, special_requirements)",
+      "3. Call validate_job_request tool with ONLY the extracted fields",
+      "4. Return the tool response EXACTLY as received - word for word, character for character",
+      "5. Add NOTHING else - no greeting, no commentary, no alternatives, no suggestions",
+      "FORBIDDEN: Do not add 'Thank you', do not add 'we can offer', do not paraphrase, do not interpret, do not suggest alternatives, do not add sales language",
+      "If the tool returns: {'valid': false, 'message': 'Service not available'} - return EXACTLY that",
+      "If the tool returns: {'valid': true, 'message': 'Validated successfully'} - return EXACTLY that",
+      "Your response MUST start with the tool result - nothing before it",
+    ],
+    constraints: [
+      "Tool call ONLY - extract and call validate_job_request",
+      "Return EXACTLY what the tool returns",
+      "Zero additional text",
+      "Zero interpretation",
+      "Zero commentary",
+      "If you add anything beyond the tool response, you have failed",
+    ],
+  },
+
   synthesis: {
     role: "You are a synthesis specialist combining task results into a customer-facing answer.",
     tools: [],
@@ -134,6 +163,7 @@ export const EXTERNAL_TASK_RULES = {
 
 export const EXTERNAL_ROUTING_RULES = {
   order: [
+    "job_request - when customer is submitting shipment details to request a quote or start a new job (provides: origin, destination, cargo, weight, service type, dates)",
     "faq - when question is about company services, policies, operational procedures, shipping options (TRY FIRST for most customer questions)",
     "opportunity_discovery - when customer explicitly asks about service availability, routes, markets served, can we ship X to Y",
     "incoterms_comparison - when question explicitly compares 2+ Incoterms OR asks specific Incoterm obligation",
@@ -164,6 +194,7 @@ export function getExternalRulesForTask(
     | "database"
     | "faq"
     | "opportunity_discovery"
+    | "job_request"
     | "synthesis"
 ): string {
   const taskRules = EXTERNAL_TASK_RULES[taskType]

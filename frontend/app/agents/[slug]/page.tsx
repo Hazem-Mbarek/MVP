@@ -187,7 +187,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className={slug === "internal" ? "overflow-y-auto lg:col-span-9" : "overflow-y-auto lg:col-span-5"}
+          className={slug === "internal" ? "overflow-y-auto lg:col-span-9" : "overflow-y-auto lg:col-span-4"}
         >
           {slug === "risk-behavior-agent" ? (
             <AnalysisOutput agentSlug={slug} onLog={handleLog} onAnalysisComplete={handleAnalysisComplete} pipelineActive={isInPipeline} />
@@ -208,7 +208,7 @@ export default function AgentPage({ params }: AgentPageProps) {
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="h-full min-h-[400px] lg:col-span-4"
+          className="h-full min-h-[400px] lg:col-span-5"
         >
           {slug === "external" ? (
             <ExternalAgentTester externalMessages={externalMessages} onAddMessage={handleAddMessage} selectedContact={selectedContact} />

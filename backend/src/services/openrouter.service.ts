@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios"
 import { config } from "../config"
-import { toolSchemas, handleSearchKnowledge, handleCheckTransportCompatibility, handleCompareIncoterms, handleQueryDatabase } from "../knowledge/tools"
+import { toolSchemas, handleSearchKnowledge, handleCheckTransportCompatibility, handleCompareIncoterms, handleQueryDatabase, handleValidateJobRequest } from "../knowledge/tools"
 import { AGENT_SYSTEM_PROMPT } from "./agent-prompt"
 
 export interface ChatMessage {
@@ -160,6 +160,9 @@ export class OpenRouterService {
               break
             case "query_database":
               toolResult = await handleQueryDatabase(toolArgs)
+              break
+            case "validate_job_request":
+              toolResult = await handleValidateJobRequest(toolArgs)
               break
             default:
               toolResult = { error: `Unknown tool: ${toolCall.function.name}` }

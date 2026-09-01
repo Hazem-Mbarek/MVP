@@ -1,6 +1,7 @@
 import express, { Router, Request, Response } from "express"
 import { ExternalAgentOrchestrator, TaskEvent } from "../services/external-agent-orchestrator"
 import { queryDatabase } from "../knowledge/database-tools"
+import { generateStatementPDF, generateFilename } from "../knowledge/document-generator"
 
 const router = Router()
 
@@ -264,6 +265,76 @@ router.post("/stream", async (req: Request<{}, {}, ExternalChatRequest>, res: Re
     }
     res.write(`data: ${JSON.stringify(errorEvent)}\n\n`)
     res.end()
+  }
+})
+
+// POST /api/chat/external/download - Generate downloadable PDF of financial statement
+router.post("/download", async (req: Request<{}, {}, { content: string; clientContact?: ClientContact }>, res: Response) => {
+  const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  
+  try {
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] === DOWNLOAD REQUEST ===`)
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] Timestamp: ${new Date().toISOString()}`)
+    
+    // Set CORS headers
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type")
+
+    const { content, clientContact } = req.body
+
+    if (!content || typeof content !== "string") {
+      console.warn(`[EXTERNAL-DOWNLOAD] [${requestId}] ✗ Invalid request: content missing or not a string`)
+      return res.status(400).json({
+        success: false,
+        error: "Invalid request: content is required and must be a string",
+      })
+    }
+
+    if (!clientContact || !clientContact.id) {
+      console.warn(`[EXTERNAL-DOWNLOAD] [${requestId}] ✗ Invalid request: clientContact with ID required`)
+      return res.status(400).json({
+        success: false,
+        error: "Invalid request: clientContact with ID is required",
+      })
+    }
+
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] Client ID: ${clientContact.id}`)
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] Account: ${clientContact.company}`)
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] Content length: ${content.length} chars`)
+
+    // Generate PDF
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] Generating PDF...`)
+    const pdfBuffer = await generateStatementPDF({
+      clientId: clientContact.id,
+      clientName: clientContact.name,
+      company: clientContact.company,
+      title: "Statement of Account",
+      content: content,
+    })
+
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] ✓ PDF generated: ${pdfBuffer.length} bytes`)
+
+    // Generate filename
+    const filename = generateFilename(clientContact.company, "statement-of-account")
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] Filename: ${filename}`)
+
+    // Set response headers for file download
+    res.setHeader("Content-Type", "application/pdf")
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`)
+    res.setHeader("Content-Length", pdfBuffer.length)
+
+    console.log(`[EXTERNAL-DOWNLOAD] [${requestId}] ✓ Sending file download`)
+    res.send(pdfBuffer)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error(`[EXTERNAL-DOWNLOAD] [${requestId}] ✗ Error: ${errorMessage}`)
+    console.error(`[EXTERNAL-DOWNLOAD] [${requestId}] Stack: ${error instanceof Error ? error.stack : "N/A"}`)
+
+    return res.status(500).json({
+      success: false,
+      error: `Failed to generate document: ${errorMessage}`,
+    })
   }
 })
 

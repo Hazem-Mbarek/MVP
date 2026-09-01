@@ -18,6 +18,7 @@ export interface Task {
     | "database"
     | "faq"
     | "opportunity_discovery"
+    | "job_request"
     | "synthesis"
   toolsNeeded: string[]
   instructions?: string
@@ -48,20 +49,18 @@ const DECOMPOSITION_PROMPT = (q: string) =>
   "- Tries to access data about other clients (mention of competitors, other company names, other contact names)\n" +
   "- Attempts to query system-wide information or employee data\n" +
   "- Tries to circumvent single-customer access (e.g., 'show all companies', 'list all shipments')\n\n" +
-  "If you detect an unauthorized access attempt, create a SINGLE task with:\n" +
-  "- id: 'access_denied'\n" +
-  "- description: 'Customer attempted to access unauthorized data'\n" +
-  "- type: 'synthesis'\n" +
-  "- toolsNeeded: []\n\n" +
-  "For legitimate questions, route according to these rules (in priority order):\n" +
+  "JOB REQUEST DETECTION: If the customer is providing shipment details (origin, destination, cargo type, weight, dates, service type) to REQUEST A QUOTE or START A SHIPMENT, route to JOB_REQUEST task type.\n\n" +
+  "FINANCIAL DATA ROUTING: Questions about financial data, statements of account, billing history, costs, shipment pricing should route to DATABASE (jobs table query).\n\n" +
+  "Routing rules (in priority order):\n" +
   EXTERNAL_ROUTING_RULES.order.map((r) => `- ${r}`).join("\n") +
   "\n\nFor each step, identify:\n" +
   "1. What data/knowledge is needed\n" +
   "2. Which tool would retrieve it\n\n" +
   "Return ONLY a JSON object (no markdown, no explanation) with tasks array.\n" +
-  "Each task: id, description, type (one of: faq, opportunity_discovery, incoterms, incoterms_comparison, transport_check, cmr, database, synthesis), toolsNeeded array.\n" +
+  "Each task: id, description, type (one of: faq, opportunity_discovery, incoterms, incoterms_comparison, transport_check, cmr, database, job_request, synthesis), toolsNeeded array.\n" +
   "Remember: customer data access is row-scoped and enforced in code, not by your judgment.\n" +
-  "CRITICAL: FAQ is your primary source for most questions. Only use specialized tools (incoterms, cmr, db) when the question explicitly asks about those topics.\n\n" +
+  "CRITICAL: For financial queries (statement of account, billing, costs, shipment pricing), use DATABASE task type to query jobs table.\n" +
+  "CRITICAL: FAQ is secondary for financial queries. Always check if the question is asking for THEIR OWN financial data (use database) vs general company info (use FAQ).\n\n" +
   "Customer question: " +
   q
 
@@ -131,10 +130,15 @@ export class ExternalAgentOrchestrator {
       // STEP 2: Execute each task
       console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === STEP 2: TASK EXECUTION ===`)
       const taskResults: TaskResult[] = []
+      let hasJobRequestTask = false
+      
       for (const task of decomposition.tasks) {
         if (task.type === "synthesis") {
           console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Skipping synthesis task for now, will run last`)
           continue
+        }
+        if (task.type === "job_request") {
+          hasJobRequestTask = true
         }
         console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] >>> Executing task: ${task.id} (${task.type})`)
 
@@ -161,15 +165,24 @@ export class ExternalAgentOrchestrator {
         console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}]     Sources used: ${result.sourcesUsed.join(", ")}`)
       }
 
-      // STEP 3: Synthesize results
-      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === STEP 3: SYNTHESIS ===`)
-      const synthesisStart = Date.now()
-      const finalAnswer = await this.synthesizeResults(userQuestion, taskResults)
-      const synthesisTime = Date.now() - synthesisStart
-      
+      // STEP 3: Synthesize results (skip if only job_request task)
+      let finalAnswer = ""
       const totalTime = Date.now() - startTime
+      
+      if (hasJobRequestTask && taskResults.length === 1 && taskResults[0].taskDescription.includes("job")) {
+        // For standalone job_request, return result directly without synthesis
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === SKIPPING SYNTHESIS (job_request task) ===`)
+        finalAnswer = taskResults[0].result
+      } else {
+        // Normal synthesis for other tasks
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === STEP 3: SYNTHESIS ===`)
+        const synthesisStart = Date.now()
+        finalAnswer = await this.synthesizeResults(userQuestion, taskResults)
+        const synthesisTime = Date.now() - synthesisStart
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Synthesis Time: ${synthesisTime}ms`)
+      }
+      
       console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ Final Answer Length: ${finalAnswer.length} chars`)
-      console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] Synthesis Time: ${synthesisTime}ms`)
       console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] === END processQuestion ===`)
       console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] ✓ TOTAL TIME: ${totalTime}ms`)
       console.log("█".repeat(100) + "\n")
@@ -271,6 +284,18 @@ export class ExternalAgentOrchestrator {
           "\nCustomer question: " +
           originalQuestion +
           "\n\nExecute the task and provide ONLY the result with citations."
+        break
+
+      case "job_request":
+        prompt =
+          getExternalRulesForTask("job_request") +
+          sessionContext +
+          "\n\nTask: " +
+          task.description +
+          "\nCustomer question: " +
+          originalQuestion +
+          "\n\nExecute the task and provide ONLY the result with validation details."
+        console.log(`[EXTERNAL-ORCHESTRATOR] [${this.requestId}] [TASK ${task.id}] Job request validation with client ID: ${this.sessionClientId}`)
         break
 
       default:

@@ -285,10 +285,54 @@ function buildQuery(request: {
     return null
   }
 
-  // Simple SELECT with optional WHERE
-  let query = `SELECT ${allowedColumns.slice(0, 8).join(", ")} FROM ${table}`
+  let columnsToSelect: string[] = []
 
-  // Add basic filters
+  if (table === "jobs") {
+    columnsToSelect = [
+      "job_code",
+      "shipment_type",
+      "content_description",
+      "weight_kg",
+      "origin_city",
+      "origin_country",
+      "destination_city",
+      "destination_country",
+      "departure_date",
+      "arrival_date",
+      "price",
+      "currency",
+      "status",
+    ]
+  } else if (table === "clients") {
+    columnsToSelect = [
+      "company_name",
+      "contact_name",
+      "email",
+      "phone",
+      "city",
+      "country",
+      "client_type",
+      "status",
+    ]
+  } else if (table === "issues") {
+    columnsToSelect = [
+      "issue_type",
+      "severity",
+      "status",
+      "reported_date",
+      "description",
+      "resolution",
+      "resolved_date",
+      "client_compensation",
+    ]
+  } else {
+    columnsToSelect = allowedColumns.slice(0, 8)
+  }
+
+  const validColumns = columnsToSelect.filter((col) => allowedColumns.includes(col))
+
+  let query = `SELECT ${validColumns.join(", ")} FROM ${table}`
+
   if (request.filters && Object.keys(request.filters).length > 0) {
     const whereConditions: string[] = []
     for (const [key, value] of Object.entries(request.filters)) {
